@@ -1,0 +1,18 @@
+{
+  "name": "wintermaul-web",
+  "version": "0.80.0",
+  "private": true,
+  "description": "Wintermaul Web with Phase 5 multiplayer safeguards and per-player gold",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "test": "node tests/phase5-safeguards.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}
