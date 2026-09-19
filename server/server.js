@@ -91,6 +91,13 @@ function closeMatchRoom(room,message){
     }
     rooms.delete(room.code);
 }
+function finishMatchRoom(room,outcome){
+    for(const player of room.players){
+        clearDisconnectTimer(player.id);const remaining=clients.get(player.id);if(!remaining)continue;
+        remaining.roomCode=null;send(remaining,'match_ended',{outcome});
+    }
+    rooms.delete(room.code);
+}
 function removeFromRoom(client,announce=true){
     clearDisconnectTimer(client.id);
     const room=currentRoom(client);client.roomCode=null;
@@ -219,7 +226,7 @@ function sanitizeGameCommand(value){
         const towerId=Number(value.towerId);if(!Number.isInteger(towerId)||towerId<1)return null;
         return {action,towerId};
     }
-    if(action==='start_wave'||action==='cycle_speed')return {action};
+    if(action==='start_wave')return {action};
     return null;
 }
 function gameCommand(client,payload){
@@ -228,7 +235,7 @@ function gameCommand(client,payload){
     const now=Date.now();if(now-client.commandWindow>2000){client.commandWindow=now;client.commandCount=0;}client.commandCount+=1;
     if(client.commandCount>24)return fail(client,'command_rate_limited','Too many game actions were submitted at once.');
     const command=sanitizeGameCommand(payload.command);if(!command)return fail(client,'invalid_game_command','That game action is invalid.');
-    if((command.action==='start_wave'||command.action==='cycle_speed')&&client.id!==room.hostId)return fail(client,'host_only','Only the host controls waves and game speed.');
+    if(command.action==='start_wave'&&client.id!==room.hostId)return fail(client,'host_only','Only the host controls waves.');
     if(command.action==='place_tower'&&TOWER_RACES.get(command.typeId)!==player.race)return fail(client,'wrong_race_tower','That tower is not available to your selected race.');
     if((command.action==='upgrade_tower'||command.action==='sell_tower')&&room.lastGameState){
         const tower=room.lastGameState.towers.find(item=>item.id===command.towerId);
@@ -255,7 +262,11 @@ function gameState(client,payload){
     if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners)return fail(client,'invalid_game_state','The game snapshot is invalid.');
     room.lastGameState=state;room.gameRevision+=1;
     touchRoom(room);
-    for(const player of room.players){if(player.id===client.id)continue;const recipient=clients.get(player.id);if(recipient)send(recipient,'game_state',{roomCode:room.code,revision:room.gameRevision,state});}
+    for(const player of room.players){
+        if(player.id===client.id)continue;
+        const recipient=clients.get(player.id);
+        if(recipient&&recipient.ws.bufferedAmount<=256*1024)send(recipient,'game_state',{roomCode:room.code,revision:room.gameRevision,state});
+    }
 }
 function gameCheckpoint(client,payload){
     const room=currentRoom(client);if(!room||room.status!=='playing'||client.id!==room.hostId)return;
@@ -271,6 +282,11 @@ function gameCommandResult(client,payload){
     const actorId=cleanText(payload.actorId,64),target=clients.get(actorId);
     if(!target||target.roomCode!==room.code)return;
     send(target,'game_command_result',{commandId:Number(payload.commandId)||0,actorId,success:Boolean(payload.success),message:cleanText(payload.message,120)});
+}
+function endMatch(client,payload){
+    const room=currentRoom(client);if(!room||room.status!=='playing')return fail(client,'match_inactive','There is no active match.');
+    if(client.id!==room.hostId)return fail(client,'host_only','Only the host can end the match.');
+    finishMatchRoom(room,payload.outcome==='victory'?'victory':'defeat');
 }
 function rateLimited(client){
     const now=Date.now();if(now-client.rateWindow>10000){client.rateWindow=now;client.rateCount=0;}
@@ -293,6 +309,7 @@ function handleClientMessage(client,raw){
         case 'game_state':gameState(client,payload);break;
         case 'game_checkpoint':gameCheckpoint(client,payload);break;
         case 'game_command_result':gameCommandResult(client,payload);break;
+        case 'end_match':endMatch(client,payload);break;
         case 'leave_room':removeFromRoom(client);break;
         default:fail(client,'unknown_message','Unknown multiplayer message.');
     }
@@ -326,6 +343,7 @@ server.on('upgrade',(request,networkSocket,head)=>{
     wss.handleUpgrade(request,networkSocket,head,ws=>wss.emit('connection',ws,request));
 });
 wss.on('connection',(ws,request)=>{
+    ws._socket?.setNoDelay?.(true);
     const requestUrl=new URL(request.url,'http://localhost'),requestedVersion=requestUrl.searchParams.get('version');
     if(requestedVersion!==PROTOCOL_VERSION){
         ws.send(JSON.stringify({type:'incompatible_version',requiredVersion:PROTOCOL_VERSION,message:`Multiplayer requires game version ${PROTOCOL_VERSION}.`}));
