@@ -91,10 +91,10 @@ function closeMatchRoom(room,message){
     }
     rooms.delete(room.code);
 }
-function finishMatchRoom(room,outcome){
+function finishMatchRoom(room,outcome,wave){
     for(const player of room.players){
         clearDisconnectTimer(player.id);const remaining=clients.get(player.id);if(!remaining)continue;
-        remaining.roomCode=null;send(remaining,'match_ended',{outcome});
+        remaining.roomCode=null;send(remaining,'match_ended',{outcome,wave});
     }
     rooms.delete(room.code);
 }
@@ -233,7 +233,7 @@ function gameCommand(client,payload){
     const room=currentRoom(client);if(!room||room.status!=='playing')return fail(client,'match_inactive','The host game is not ready.');
     const player=room.players.find(item=>item.id===client.id);if(!player?.gameReady)return fail(client,'client_not_ready','Your game is still loading.');
     const now=Date.now();if(now-client.commandWindow>2000){client.commandWindow=now;client.commandCount=0;}client.commandCount+=1;
-    if(client.commandCount>24)return fail(client,'command_rate_limited','Too many game actions were submitted at once.');
+    if(client.commandCount>48)return fail(client,'command_rate_limited','Too many game actions were submitted at once.');
     const command=sanitizeGameCommand(payload.command);if(!command)return fail(client,'invalid_game_command','That game action is invalid.');
     if(command.action==='start_wave'&&client.id!==room.hostId)return fail(client,'host_only','Only the host controls waves.');
     if(command.action==='place_tower'&&TOWER_RACES.get(command.typeId)!==player.race)return fail(client,'wrong_race_tower','That tower is not available to your selected race.');
@@ -286,16 +286,17 @@ function gameCommandResult(client,payload){
 function endMatch(client,payload){
     const room=currentRoom(client);if(!room||room.status!=='playing')return fail(client,'match_inactive','There is no active match.');
     if(client.id!==room.hostId)return fail(client,'host_only','Only the host can end the match.');
-    finishMatchRoom(room,payload.outcome==='victory'?'victory':'defeat');
+    const wave=Math.max(1,Math.min(999,Math.floor(Number(payload.wave)||room.lastGameState?.currentWave||1)));
+    finishMatchRoom(room,payload.outcome==='victory'?'victory':'defeat',wave);
 }
 function rateLimited(client){
     const now=Date.now();if(now-client.rateWindow>10000){client.rateWindow=now;client.rateCount=0;}
     client.rateCount+=1;return client.rateCount>180;
 }
 function handleClientMessage(client,raw){
-    if(rateLimited(client))return fail(client,'rate_limited','Too many requests. Please slow down.');
     let payload;try{payload=JSON.parse(raw.toString());}catch(error){return fail(client,'invalid_json','Invalid multiplayer message.');}
     if(!payload||typeof payload.type!=='string')return fail(client,'invalid_message','Invalid multiplayer message.');
+    if(!['game_state','game_checkpoint','latency_ping'].includes(payload.type)&&rateLimited(client))return fail(client,'rate_limited','Too many requests. Please slow down.');
     switch(payload.type){
         case 'latency_ping':send(client,'latency_pong',{clientTime:Number(payload.clientTime)||0,serverTime:Date.now()});break;
         case 'create_room':createRoom(client,payload);break;
