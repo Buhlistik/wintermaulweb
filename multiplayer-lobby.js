@@ -3,7 +3,7 @@
 
     const MAX_PLAYERS=9;
     const CONNECT_TIMEOUT_MS=6000;
-    const PROTOCOL_VERSION='0.80.0';
+    const PROTOCOL_VERSION='0.82.0';
     const SESSION_KEY='wintermaul:multiplayer-session';
     const sessionToken=(()=>{
         let value='';try{value=sessionStorage.getItem(SESSION_KEY)||'';}catch(error){}
