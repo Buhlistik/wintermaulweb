@@ -9,8 +9,8 @@ const {WebSocketServer,WebSocket}=require('ws');
 const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
-const HOME_FILE='Wintermaul_v.80.html';
-const PROTOCOL_VERSION='0.80.0';
+const HOME_FILE='Wintermaul_v.82.html';
+const PROTOCOL_VERSION='0.82.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_PAYLOAD_BYTES=1024*1024;
@@ -20,16 +20,19 @@ const ROOM_MAX_AGE_MS=6*60*60*1000;
 const ROOM_CODE_LENGTH=6;
 const ROOM_CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const RACES=new Set(['human','orc','undead','nightelf']);
-const TOWER_IDS=new Set(['alliance-arrow-tower','crystal-sentinel','merchant-house','command-banner','dwarven-cannon','grand-fire-spire','war-totem','blight-spire','moon-sentinel']);
+const CUSTOM_TOWERS=Object.freeze({
+    orc:['orc-watchtower','orc-spiked-bunker','orc-war-forge','orc-war-hut','orc-fel-well','orc-dragon-pit'],
+    undead:['undead-blighted-altar','undead-ember-spire','undead-frost-spire','undead-bone-cage','undead-soul-prism','undead-bonefire-tower'],
+    nightelf:['nightelf-ancient-protector','nightelf-moonwell','nightelf-lunar-sentinel','nightelf-runestone','nightelf-flame-warden','nightelf-ancient-of-lore']
+});
+const HUMAN_TOWERS=['alliance-arrow-tower','crystal-sentinel','merchant-house','command-banner','dwarven-cannon','grand-fire-spire'];
 const TOWER_RACES=new Map([
-    ['alliance-arrow-tower','human'],['crystal-sentinel','human'],['merchant-house','human'],['command-banner','human'],['dwarven-cannon','human'],['grand-fire-spire','human'],
-    ['war-totem','orc'],['blight-spire','undead'],['moon-sentinel','nightelf']
+    ...HUMAN_TOWERS.map(typeId=>[typeId,'human']),
+    ...Object.entries(CUSTOM_TOWERS).flatMap(([race,typeIds])=>typeIds.map(typeId=>[typeId,race]))
 ]);
-const TOWER_COSTS=new Map([['alliance-arrow-tower',75],['crystal-sentinel',100],['merchant-house',150],['command-banner',200],['dwarven-cannon',125],['grand-fire-spire',400],['war-totem',105],['blight-spire',100],['moon-sentinel',95]]);
-const UPGRADE_COSTS=new Map([
-    ['alliance-arrow-tower',new Map([[1,125],[2,175]])],['crystal-sentinel',new Map([[1,150],[2,175]])],['dwarven-cannon',new Map([[1,200],[2,225]])],
-    ['merchant-house',new Map([[1,200],[2,250]])],['command-banner',new Map([[1,250],[2,275]])],['grand-fire-spire',new Map([[1,450],[2,500]])]
-]);
+const TOWER_IDS=new Set(TOWER_RACES.keys());
+const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,0]));
+const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,new Map([[1,0],[2,0]])]));
 const COLORS=['#ff3b3b','#3b82ff','#3fffe6','#ffb52e','#fff86a','#b066ff','#35ed65','#ff8fc9','#b8c0cc'];
 const MIME_TYPES={
     '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
@@ -243,7 +246,7 @@ function gameCommand(client,payload){
         if(tower.ownerId&&tower.ownerId!==client.id)return fail(client,'not_tower_owner','Only the player who owns a tower can change it.');
         if(command.action==='upgrade_tower'){
             const baseTypeId=tower.baseTypeId||tower.typeId,cost=UPGRADE_COSTS.get(baseTypeId)?.get(command.path);
-            if(!cost||tower.upgradePath)return fail(client,'upgrade_unavailable','That upgrade is not available.');
+            if(cost===undefined||tower.upgradePath)return fail(client,'upgrade_unavailable','That upgrade is not available.');
             if((room.lastGameState.playerGold?.[client.id]??0)<cost)return fail(client,'not_enough_gold','You do not have enough gold for that upgrade.');
         }
     }
