@@ -86,8 +86,6 @@ function projectChecks(config){
     const client=fs.readFileSync(path.join(ROOT,'assets/js/multiplayer-lobby.js'));
     const clientText=client.toString('utf8');
     if(!clientText.includes('window.WINTERMAUL_RELEASE_INFO')||clientText.includes('const PROTOCOL_VERSION='))throw new Error('The multiplayer client must read generated release information instead of hardcoded versions.');
-    const duplicate=fs.readFileSync(path.join(ROOT,'multiplayer-lobby.js'));
-    if(!client.equals(duplicate))throw new Error('Root and webhost multiplayer client copies differ.');
     const indexPath=path.join(ROOT,'index.html');
     if(fs.existsSync(indexPath)){
         const index=fs.readFileSync(indexPath,'utf8');

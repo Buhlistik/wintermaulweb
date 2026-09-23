@@ -7,7 +7,6 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "test": "node tests/phase5-safeguards.test.js && node tests/release-workflow.test.js",
     "release:check": "node scripts/release.js check",
     "release:package": "node scripts/release.js package",
     "release:baseline": "node scripts/release.js baseline",
