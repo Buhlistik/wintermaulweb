@@ -20,6 +20,8 @@ Release 1.15 removes redundant headings from the statistics and Compendium menus
 
 Release 1.16 lowers menu and game music output and raises the procedural tower/enemy sound level while preserving the full SFX slider range. It does not change multiplayer state and remains compatible with releases 1.12 through 1.15 on protocol `/2`.
 
+Release 1.17 removes enemy-to-enemy separation so overlapping units cannot block or stall one another, and adds a top-left in-game Menu button that opens the existing Escape options panel. It does not change multiplayer state and remains compatible with releases 1.12 through 1.16 on protocol `/2`.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
