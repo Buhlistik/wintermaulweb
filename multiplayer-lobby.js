@@ -3,7 +3,7 @@
 
     const MAX_PLAYERS=9;
     const CONNECT_TIMEOUT_MS=6000;
-    const PROTOCOL_VERSION='0.86.0';
+    const PROTOCOL_VERSION='0.87.0';
     const MAX_CHAT_LENGTH=200;
     const SESSION_KEY='wintermaul:multiplayer-session';
     const sessionToken=(()=>{
@@ -309,7 +309,7 @@
             if(player){
                 const local=player.id===clientId;
                 const connected=player.connected!==false,status=!connected?'Reconnecting':(player.ready?'Ready':(player.isHost?'Host':'Waiting'));
-                html+=`<div class="slot-row ${local?'local-player':''} ${player.isHost?'host-player':''} ${connected?'':'closed'}"><div class="slot-name">${escapeHtml(player.name)}${local?' (You)':''}</div>${raceOptions(player.race,local&&connected&&room.status==='lobby')}<select class="slot-select" disabled><option>Team 1</option></select>${colorControl(player,local&&connected,usedColors)}<div class="ready-state ${player.ready&&connected?'ready':''} ${player.isHost?'host':''}">${status}</div></div>`;
+                html+=`<div class="slot-row ${local?'local-player':''} ${player.isHost?'host-player':''} ${connected?'':'closed'}"><div class="slot-name">${escapeHtml(player.name)}${local?' (You)':''}</div>${raceOptions(player.race,local&&connected&&room.status==='lobby')}<select class="slot-select" disabled><option>Team 1</option></select>${colorControl(player,local&&connected&&room.status==='lobby',usedColors)}<div class="ready-state ${player.ready&&connected?'ready':''} ${player.isHost?'host':''}">${status}</div></div>`;
             }else html+=`<div class="slot-row closed"><div class="slot-name">Open Slot</div><select class="slot-select" disabled><option>-</option></select><select class="slot-select" disabled><option>-</option></select><div class="closed-color-swatch" style="background:${color};"></div><div class="ready-state">Open</div></div>`;
         });
         grid.innerHTML=html;
