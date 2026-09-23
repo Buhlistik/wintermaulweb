@@ -3,7 +3,7 @@
 
     const MAX_PLAYERS=9;
     const CONNECT_TIMEOUT_MS=6000;
-    const PROTOCOL_VERSION='0.98.0';
+    const RELEASE_INFO=window.WINTERMAUL_RELEASE_INFO||null;
     const MAX_CHAT_LENGTH=200;
     const SESSION_KEY='wintermaul:multiplayer-session';
     const sessionToken=(()=>{
@@ -42,7 +42,10 @@
     function serverUrl(){
         const configured=window.WINTERMAUL_MULTIPLAYER_URL?String(window.WINTERMAUL_MULTIPLAYER_URL):null;
         const base=configured||(location.protocol==='file:'?'ws://localhost:3000/ws':`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws`);
-        const url=new URL(base);url.searchParams.set('session',sessionToken);url.searchParams.set('version',PROTOCOL_VERSION);return url.toString();
+        if(!RELEASE_INFO?.releaseVersion||!RELEASE_INFO?.protocolId)throw new Error('Wintermaul release configuration is missing. Run the release package step and upload its ZIP.');
+        const url=new URL(base);url.searchParams.set('session',sessionToken);url.searchParams.set('release',RELEASE_INFO.releaseVersion);url.searchParams.set('protocol',RELEASE_INFO.protocolId);
+        if(RELEASE_INFO.legacyHandshakeReleaseVersion)url.searchParams.set('version',RELEASE_INFO.legacyHandshakeReleaseVersion);
+        return url.toString();
     }
     function setStatus(message,type=''){
         const status=document.getElementById('multiplayer-status');
@@ -210,11 +213,21 @@
     }
     function handleMessage(raw){
         let message;try{message=JSON.parse(raw);}catch(error){return;}
-        if(message.type==='welcome'){clientId=message.clientId;return;}
+        if(message.type==='welcome'){
+            const serverProtocol=message.protocolId||message.protocolVersion;
+            const legacyMatch=!message.protocolId&&RELEASE_INFO?.compatibleLegacyReleaseVersions?.includes(message.protocolVersion);
+            if(serverProtocol!==RELEASE_INFO?.protocolId&&!legacyMatch){
+                versionBlocked=true;closingIntentionally=true;stopReconnect();stopLatencyChecks();
+                const details=`Client ${RELEASE_INFO?.releaseVersion||'unknown'} (${RELEASE_INFO?.protocolId||'unknown protocol'}) received server ${message.releaseVersion||message.protocolVersion||'unknown'} (${serverProtocol||'unknown protocol'}). Update to a compatible release.`;
+                setStatus(details,'error');showToast(details);socket?.close(1008,'Version mismatch');return;
+            }
+            clientId=message.clientId;return;
+        }
         if(message.type==='latency_pong'){window.MultiplayerGame?.setLatency?.(performance.now()-lastPingSent);return;}
         if(message.type==='incompatible_version'){
             versionBlocked=true;closingIntentionally=true;stopReconnect();stopLatencyChecks();
-            setStatus(message.message||'This game build does not match the multiplayer server.','error');showToast(message.message||'Multiplayer version mismatch.');return;
+            const details=message.message||`Client ${RELEASE_INFO?.releaseVersion||'unknown'} (${RELEASE_INFO?.protocolId||'unknown protocol'}) is incompatible with this multiplayer server. Update to a compatible release.`;
+            setStatus(details,'error');showToast(details);return;
         }
         if(message.type==='resume_session'&&message.room){stopReconnect();resumeFromServer(message);return;}
         if(message.type==='session_status'&&!message.resumed){

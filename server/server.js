@@ -5,12 +5,15 @@ const fs=require('fs');
 const path=require('path');
 const crypto=require('crypto');
 const {WebSocketServer,WebSocket}=require('ws');
+const RELEASE_CONFIG=require('../release.json');
+const {isCompatibleClient}=require('../lib/protocol-compatibility');
 
 const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
 const HOME_FILE='index.html';
-const PROTOCOL_VERSION='0.98.0';
+const RELEASE_VERSION=RELEASE_CONFIG.releaseVersion;
+const PROTOCOL_ID=RELEASE_CONFIG.multiplayer.protocolId;
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_CHAT_LENGTH=200;
@@ -376,7 +379,7 @@ const server=http.createServer((request,response)=>{
     try{pathname=decodeURIComponent(requestUrl.pathname);}catch(error){response.writeHead(400);response.end('Bad request');return;}
     if(pathname==='/health'){
         response.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
-        response.end(JSON.stringify({ok:true,protocolVersion:PROTOCOL_VERSION,rooms:rooms.size,players:[...rooms.values()].reduce((sum,room)=>sum+room.players.length,0)}));return;
+        response.end(JSON.stringify({ok:true,releaseVersion:RELEASE_VERSION,protocolId:PROTOCOL_ID,protocolVersion:PROTOCOL_ID,rooms:rooms.size,players:[...rooms.values()].reduce((sum,room)=>sum+room.players.length,0)}));return;
     }
     if(pathname==='/')pathname=`/${HOME_FILE}`;
     const filePath=path.resolve(SITE_ROOT,`.${pathname}`);
@@ -399,9 +402,13 @@ server.on('upgrade',(request,networkSocket,head)=>{
 });
 wss.on('connection',(ws,request)=>{
     ws._socket?.setNoDelay?.(true);
-    const requestUrl=new URL(request.url,'http://localhost'),requestedVersion=requestUrl.searchParams.get('version');
-    if(requestedVersion!==PROTOCOL_VERSION){
-        ws.send(JSON.stringify({type:'incompatible_version',requiredVersion:PROTOCOL_VERSION,message:`Multiplayer requires game version ${PROTOCOL_VERSION}.`}));
+    const requestUrl=new URL(request.url,'http://localhost');
+    const requestedProtocol=requestUrl.searchParams.get('protocol');
+    const requestedRelease=requestUrl.searchParams.get('release')||requestUrl.searchParams.get('version');
+    const compatible=isCompatibleClient(RELEASE_CONFIG.multiplayer,requestedProtocol,requestedRelease);
+    if(!compatible){
+        const message=`Client ${requestedRelease||'unknown release'} (${requestedProtocol||'legacy protocol'}) is incompatible with server ${RELEASE_VERSION} (${PROTOCOL_ID}). Update to a compatible game release.`;
+        ws.send(JSON.stringify({type:'incompatible_version',requiredReleaseVersion:RELEASE_VERSION,requiredProtocolId:PROTOCOL_ID,requestedReleaseVersion:requestedRelease,requestedProtocolId:requestedProtocol,message}));
         ws.close(1008,'Version mismatch');return;
     }
     const requestedSession=requestUrl.searchParams.get('session');
@@ -409,7 +416,7 @@ wss.on('connection',(ws,request)=>{
     const existing=clients.get(clientId);
     const client={id:clientId,ws,roomCode:null,isAlive:true,rateWindow:Date.now(),rateCount:0,commandWindow:Date.now(),commandCount:0};clients.set(client.id,client);
     if(existing&&existing.ws!==ws)existing.ws.terminate();
-    send(client,'welcome',{clientId:client.id,serverTime:Date.now(),protocolVersion:PROTOCOL_VERSION});
+    send(client,'welcome',{clientId:client.id,serverTime:Date.now(),releaseVersion:RELEASE_VERSION,protocolId:PROTOCOL_ID,protocolVersion:PROTOCOL_ID});
     if(!resumeSession(client))send(client,'session_status',{resumed:false});
     ws.on('pong',()=>{client.isAlive=true;});
     ws.on('message',raw=>handleClientMessage(client,raw));
@@ -432,6 +439,6 @@ const roomCleanup=setInterval(()=>{
     }
 },60000);roomCleanup.unref?.();
 
-server.listen(PORT,HOST,()=>console.log(`Wintermaul Phase 5 server: http://localhost:${PORT}`));
+server.listen(PORT,HOST,()=>console.log(`Wintermaul v${RELEASE_VERSION} server (${PROTOCOL_ID}): http://localhost:${PORT}`));
 function shutdown(){clearInterval(heartbeat);clearInterval(roomCleanup);disconnectTimers.forEach(timer=>clearTimeout(timer));wss.close(()=>server.close(()=>process.exit(0)));setTimeout(()=>process.exit(0),3000).unref();}
 process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);
