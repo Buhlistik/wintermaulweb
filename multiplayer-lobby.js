@@ -3,7 +3,7 @@
 
     const MAX_PLAYERS=9;
     const CONNECT_TIMEOUT_MS=6000;
-    const PROTOCOL_VERSION='0.85.0';
+    const PROTOCOL_VERSION='0.86.0';
     const MAX_CHAT_LENGTH=200;
     const SESSION_KEY='wintermaul:multiplayer-session';
     const sessionToken=(()=>{
@@ -283,7 +283,7 @@
     function escapeHtml(value){return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
     function raceOptions(selected,editable){
         const options=Object.entries(raceNames).map(([value,label])=>`<option value="${value}" ${selected===value?'selected':''}>${label}</option>`).join('');
-        return `<select class="slot-select" ${editable?'onchange="selectRace(this.value)"':'disabled'}>${options}</select>`;
+        return `<select class="slot-select race-select" ${editable?'onchange="selectRace(this.value)"':'disabled'}>${options}</select>`;
     }
     function colorControl(player,editable,usedColors){
         if(!editable)return `<div class="closed-color-swatch" aria-label="${escapeHtml(player.name)} color" style="background:${player.color};"></div>`;
@@ -309,7 +309,7 @@
             if(player){
                 const local=player.id===clientId;
                 const connected=player.connected!==false,status=!connected?'Reconnecting':(player.ready?'Ready':(player.isHost?'Host':'Waiting'));
-                html+=`<div class="slot-row ${local?'local-player':''} ${player.isHost?'host-player':''} ${connected?'':'closed'}"><div class="slot-name">${escapeHtml(player.name)}${local?' (You)':''}</div>${raceOptions(player.race,local&&connected)}<select class="slot-select" disabled><option>Team 1</option></select>${colorControl(player,local&&connected,usedColors)}<div class="ready-state ${player.ready&&connected?'ready':''} ${player.isHost?'host':''}">${status}</div></div>`;
+                html+=`<div class="slot-row ${local?'local-player':''} ${player.isHost?'host-player':''} ${connected?'':'closed'}"><div class="slot-name">${escapeHtml(player.name)}${local?' (You)':''}</div>${raceOptions(player.race,local&&connected&&room.status==='lobby')}<select class="slot-select" disabled><option>Team 1</option></select>${colorControl(player,local&&connected,usedColors)}<div class="ready-state ${player.ready&&connected?'ready':''} ${player.isHost?'host':''}">${status}</div></div>`;
             }else html+=`<div class="slot-row closed"><div class="slot-name">Open Slot</div><select class="slot-select" disabled><option>-</option></select><select class="slot-select" disabled><option>-</option></select><div class="closed-color-swatch" style="background:${color};"></div><div class="ready-state">Open</div></div>`;
         });
         grid.innerHTML=html;
