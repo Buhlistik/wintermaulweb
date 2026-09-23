@@ -9,10 +9,11 @@ const {WebSocketServer,WebSocket}=require('ws');
 const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
-const HOME_FILE='Wintermaul_v.82.html';
-const PROTOCOL_VERSION='0.82.0';
+const HOME_FILE='Wintermaul_v.83.html';
+const PROTOCOL_VERSION='0.83.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
+const MAX_CHAT_LENGTH=200;
 const MAX_PAYLOAD_BYTES=1024*1024;
 const RECONNECT_GRACE_MS=45000;
 const LOBBY_IDLE_MS=60*60*1000;
@@ -152,7 +153,7 @@ function createRoom(client,payload){
     removeFromRoom(client);
     const code=roomCode();
     const room={code,status:'lobby',hostId:client.id,createdAt:Date.now(),updatedAt:Date.now(),startedAt:null,players:[],messages:[],gameRevision:0,lastGameState:null,lastCheckpoint:null,commandSequence:0,resumeStatus:null,reconnectDeadline:null};
-    const host=playerFor(client,payload,room);room.players.push(host);
+    const host=playerFor(client,payload,room);host.ready=true;room.players.push(host);
     addMessage(room,systemMessage(`${host.name} created room ${code}.`));
     rooms.set(code,room);client.roomCode=code;broadcastState(room);
 }
@@ -171,11 +172,11 @@ function updateProfile(client,payload){
     if(room.status!=='lobby')return fail(client,'match_started','The match has already started.');
     const player=room.players.find(item=>item.id===client.id);if(!player)return;
     if(payload.name!==undefined)player.name=cleanText(payload.name,15,player.name);
-    if(payload.race!==undefined){player.race=cleanRace(payload.race);player.ready=false;}
+    if(payload.race!==undefined){player.race=cleanRace(payload.race);player.ready=player.id===room.hostId;}
     if(payload.color!==undefined){
         if(!COLORS.includes(payload.color))return fail(client,'invalid_color','That player color is unavailable.');
         if(room.players.some(item=>item.id!==client.id&&item.color===payload.color))return fail(client,'color_taken','That player color is already in use.');
-        player.color=payload.color;player.ready=false;
+        player.color=payload.color;player.ready=player.id===room.hostId;
     }
     broadcastState(room);
 }
@@ -183,13 +184,14 @@ function toggleReady(client){
     const room=currentRoom(client);if(!room)return fail(client,'not_in_room','Join a room first.');
     if(room.status!=='lobby')return fail(client,'match_started','The match has already started.');
     const player=room.players.find(item=>item.id===client.id);if(!player)return;
+    if(player.id===room.hostId){player.ready=true;broadcastState(room);return;}
     player.ready=!player.ready;
     addMessage(room,systemMessage(`${player.name} is ${player.ready?'ready':'not ready'}.`));broadcastState(room);
 }
 function chat(client,payload){
     const room=currentRoom(client);if(!room)return fail(client,'not_in_room','Join a room first.');
     const player=room.players.find(item=>item.id===client.id);if(!player)return;
-    const text=cleanText(payload.text,240);if(!text)return;
+    const text=cleanText(payload.text,MAX_CHAT_LENGTH);if(!text)return;
     addMessage(room,{id:id(),kind:'player',name:player.name,text,at:Date.now()});broadcastState(room);
 }
 function startMatch(client){

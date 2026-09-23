@@ -3,7 +3,8 @@
 
     const MAX_PLAYERS=9;
     const CONNECT_TIMEOUT_MS=6000;
-    const PROTOCOL_VERSION='0.82.0';
+    const PROTOCOL_VERSION='0.83.0';
+    const MAX_CHAT_LENGTH=200;
     const SESSION_KEY='wintermaul:multiplayer-session';
     const sessionToken=(()=>{
         let value='';try{value=sessionStorage.getItem(SESSION_KEY)||'';}catch(error){}
@@ -124,7 +125,7 @@
     function toggleReady(){if(isActive())send('toggle_ready');}
     function sendChat(text){
         if(!isActive())return false;
-        const value=String(text||'').trim().slice(0,240);
+        const value=String(text||'').trim().slice(0,MAX_CHAT_LENGTH);
         return Boolean(value&&send('chat',{text:value}));
     }
     function requestMatchStart(){return isActive()&&send('start_match');}
@@ -313,12 +314,11 @@
         });
         grid.innerHTML=html;
         if(me){playerRace=me.race;playerColor=me.color;currentUsername=me.name;}
-        document.getElementById('lobby-race-info').textContent=raceNames[playerRace]||'Humans';
-        ['lobby-room-row','lobby-player-count-row','lobby-network-mode-row'].forEach(id=>{const element=document.getElementById(id);if(element)element.style.display='flex';});
+        ['lobby-room-row','lobby-player-count-row'].forEach(id=>{const element=document.getElementById(id);if(element)element.style.display='flex';});
         document.getElementById('lobby-room-code').textContent=room.code;
         document.getElementById('lobby-player-count').textContent=`${players.length} / ${MAX_PLAYERS}`;
-        const readyButton=document.getElementById('lobby-ready-btn');readyButton.style.display='block';readyButton.disabled=room.status!=='lobby';readyButton.textContent=me?.ready?'Unready':'Ready Up';
-        const startButton=document.getElementById('lobby-start-game-btn'),allReady=players.length>0&&players.every(player=>player.ready&&player.connected!==false);
+        const readyButton=document.getElementById('lobby-ready-btn');readyButton.style.display=me?.isHost?'none':'block';readyButton.disabled=room.status!=='lobby';readyButton.textContent=me?.ready?'Unready':'Ready Up';
+        const startButton=document.getElementById('lobby-start-game-btn'),allReady=players.some(player=>player.id===room.hostId&&player.ready&&player.connected!==false)&&players.filter(player=>player.id!==room.hostId).every(player=>player.ready&&player.connected!==false);
         startButton.style.display='block';
         if(room.status==='starting'){startButton.disabled=true;startButton.textContent='Starting...';}
         else if(me?.isHost){startButton.disabled=!allReady;startButton.textContent=allReady?'Start Match':'Waiting for Ready';}

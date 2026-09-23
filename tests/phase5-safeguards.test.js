@@ -22,7 +22,7 @@ function waitForServer(child){
         child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Phase 5 server exited with code ${code}.`));});
     });
 }
-function connect(baseUrl,session,version='0.82.0'){
+function connect(baseUrl,session,version='0.83.0'){
     return new Promise((resolve,reject)=>{
         const url=new URL(baseUrl);url.searchParams.set('session',session);url.searchParams.set('version',version);
         const ws=new WebSocket(url),messages=[],waiters=[];
@@ -68,11 +68,11 @@ function connect(baseUrl,session,version='0.82.0'){
     try{
         const siteUrl=new URL(baseUrl);siteUrl.protocol=siteUrl.protocol==='wss:'?'https:':'http:';siteUrl.pathname='/';siteUrl.search='';
         const healthResponse=await fetch(new URL('/health',siteUrl));
-        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.82.0',rooms:0,players:0});
+        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.83.0',rooms:0,players:0});
 
         const outdated=await connect(baseUrl,'phase5-old-client-000001','0.79.0');
         const mismatch=await outdated.waitFor(message=>message.type==='incompatible_version');
-        assert.equal(mismatch.requiredVersion,'0.82.0');await outdated.close();
+        assert.equal(mismatch.requiredVersion,'0.83.0');await outdated.close();
 
         const hostSession='phase5-host-session-000001';
         const guestSession='phase5-guest-session-00001';
@@ -81,16 +81,24 @@ function connect(baseUrl,session,version='0.82.0'){
             host.waitFor(message=>message.type==='welcome'),guest.waitFor(message=>message.type==='welcome')
         ]);
         assert.equal(hostWelcome.clientId,hostSession);assert.equal(guestWelcome.clientId,guestSession);
-        assert.equal(hostWelcome.protocolVersion,'0.82.0');
+        assert.equal(hostWelcome.protocolVersion,'0.83.0');
         host.send('latency_ping',{clientTime:123});
         const pong=await host.waitFor(message=>message.type==='latency_pong');assert.equal(pong.clientTime,123);assert.ok(pong.serverTime>0);
 
         host.send('create_room',{name:'Host',race:'human',color:'#ff3b3b'});
         const created=await host.waitFor(message=>message.type==='room_state'&&message.room.players.length===1);
+        assert.equal(created.room.players[0].ready,true,'host should start ready automatically');
         const code=created.room.code;
         guest.send('join_room',{code,name:'Guest',race:'undead',color:'#3b82ff'});
-        await host.waitFor(message=>message.type==='room_state'&&message.room.players.length===2);
-        host.send('toggle_ready');guest.send('toggle_ready');
+        const joined=await host.waitFor(message=>message.type==='room_state'&&message.room.players.length===2);
+        assert.equal(joined.room.players.find(player=>player.id===hostSession).ready,true);
+        assert.equal(joined.room.players.find(player=>player.id===guestSession).ready,false);
+        host.send('start_match');
+        await host.waitFor(message=>message.type==='error'&&message.code==='players_not_ready');
+        guest.send('chat',{text:'x'.repeat(260)});
+        const longChat=await host.waitFor(message=>message.type==='room_state'&&message.room.messages.some(item=>item.kind==='player'&&item.text.length===200));
+        assert.equal(longChat.room.messages.find(item=>item.kind==='player').text.length,200);
+        guest.send('toggle_ready');
         await host.waitFor(message=>message.type==='room_state'&&message.room.players.every(player=>player.ready));
         host.send('start_match');
         await Promise.all([
