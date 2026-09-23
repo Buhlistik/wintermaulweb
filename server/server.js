@@ -23,7 +23,7 @@ const LOBBY_IDLE_MS=60*60*1000;
 const ROOM_MAX_AGE_MS=6*60*60*1000;
 const ROOM_CODE_LENGTH=6;
 const ROOM_CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const RACES=new Set(['human','orc','undead','nightelf']);
+const RACES=new Set(['human','orc','undead','nightelf','naga']);
 const CUSTOM_TOWERS=Object.freeze({
     orc:['orc-watchtower','orc-spiked-bunker','orc-war-forge','orc-war-hut','orc-fel-well','orc-dragon-pit'],
     undead:['undead-blighted-altar','undead-ember-spire','undead-frost-spire','undead-bone-cage','undead-soul-prism','undead-bonefire-tower'],

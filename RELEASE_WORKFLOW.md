@@ -8,6 +8,8 @@ Public versions now use `1.10`, `1.11`, … `1.99`, then `2.0`. The package comm
 
 The 1.10 balance pass changes upgrade costs and combat rules, so it starts protocol `wintermaul-mp/2`. Older balance rules cannot safely share purchases and host migration with this release. Future releases using these same compatible rules keep `/2` even when their release number changes.
 
+The 1.11 Naga compendium unlock is stored in each player's browser. It adds no Naga tower definitions or new multiplayer state, so it remains compatible with protocol `/2`.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
