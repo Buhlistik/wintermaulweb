@@ -10,7 +10,7 @@ const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
 const HOME_FILE='index.html';
-const PROTOCOL_VERSION='0.89.0';
+const PROTOCOL_VERSION='0.91.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_CHAT_LENGTH=200;
@@ -40,7 +40,8 @@ const HUMAN_UPGRADE_COSTS=new Map([
     ['alliance-arrow-tower',[125,175]],['crystal-sentinel',[150,175]],['dwarven-cannon',[200,225]],
     ['merchant-house',[200,250]],['command-banner',[250,275]],['grand-fire-spire',[450,500]]
 ]);
-const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)||0]));
+const ORC_TOWER_COSTS=new Map([['orc-spiked-bunker',10],['orc-watchtower',100],['orc-war-forge',150],['orc-war-hut',175],['orc-fel-well',300],['orc-dragon-pit',500]]);
+const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)??ORC_TOWER_COSTS.get(typeId)??0]));
 const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[
     typeId,new Map(HUMAN_UPGRADE_COSTS.has(typeId)?HUMAN_UPGRADE_COSTS.get(typeId).map((cost,index)=>[index+1,cost]):[[1,0],[2,0]])
 ]));
@@ -275,8 +276,15 @@ function gameState(client,payload){
     const validLedger=ledger&&typeof ledger==='object'&&!Array.isArray(ledger)&&Object.keys(ledger).length===playerIds.size&&Object.entries(ledger).every(([playerId,gold])=>playerIds.has(playerId)&&Number.isInteger(gold)&&gold>=0&&gold<=1000000000);
     const validOwners=Array.isArray(state?.towers)&&state.towers.every(tower=>!tower.ownerId||playerIds.has(tower.ownerId));
     const projectiles=state?.projectileEvents;
-    const validProjectiles=projectiles===undefined||(Array.isArray(projectiles)&&projectiles.length<=128&&projectiles.every(projectile=>projectile&&Number.isSafeInteger(projectile.id)&&projectile.id>0&&['arrow','crystal','cannon','fire','aura'].includes(projectile.role)&&[projectile.fromX,projectile.fromY,projectile.toX,projectile.toY].every(value=>Number.isFinite(value)&&value>=0&&value<=4096)&&Number.isFinite(projectile.at)&&projectile.at>=0));
-    if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners||!validProjectiles)return fail(client,'invalid_game_state','The game snapshot is invalid.');
+    const validProjectile=projectile=>{
+        if(!projectile||!Number.isSafeInteger(projectile.id)||projectile.id<=0||![projectile.fromX,projectile.fromY,projectile.toX,projectile.toY].every(value=>Number.isFinite(value)&&value>=0&&value<=4096)||!Number.isFinite(projectile.at)||projectile.at<0)return false;
+        if(projectile.kind==='shot')return ['arrow','crystal','cannon','fire','aura','fel'].includes(projectile.role);
+        return projectile.kind==='breath'&&projectile.role==='dragon'&&Number.isFinite(projectile.spread)&&projectile.spread>0&&projectile.spread<=4096;
+    };
+    const validProjectiles=projectiles===undefined||(Array.isArray(projectiles)&&projectiles.length<=128&&projectiles.every(validProjectile));
+    const earthquakeFields=state?.earthquakeFields;
+    const validEarthquakeFields=earthquakeFields===undefined||(Array.isArray(earthquakeFields)&&earthquakeFields.length<=1024&&earthquakeFields.every(field=>field&&Number.isSafeInteger(field.id)&&field.id>0&&Number.isFinite(field.x)&&field.x>=0&&field.x<=4096&&Number.isFinite(field.y)&&field.y>=0&&field.y<=4096&&Number.isFinite(field.radius)&&field.radius>0&&field.radius<=4096&&Number.isFinite(field.dps)&&field.dps>=0&&field.dps<=100000&&Number.isFinite(field.expiresAt)&&field.expiresAt>=0&&['normal','piercing','magic','siege','elemental','support','economic'].includes(field.attackType||'siege')&&(!field.ownerId||playerIds.has(field.ownerId))));
+    if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners||!validProjectiles||!validEarthquakeFields)return fail(client,'invalid_game_state','The game snapshot is invalid.');
     room.lastGameState=state;room.gameRevision+=1;
     touchRoom(room);
     for(const player of room.players){
@@ -290,7 +298,9 @@ function gameCheckpoint(client,payload){
     const checkpoint=payload.checkpoint;
     const playerIds=new Set(room.players.map(player=>player.id)),ledger=checkpoint?.playerGold;
     const validLedger=ledger&&typeof ledger==='object'&&!Array.isArray(ledger)&&Object.keys(ledger).length===playerIds.size&&Object.entries(ledger).every(([playerId,gold])=>playerIds.has(playerId)&&Number.isInteger(gold)&&gold>=0&&gold<=1000000000);
-    if(!checkpoint||typeof checkpoint!=='object'||!Array.isArray(checkpoint.towers)||!Array.isArray(checkpoint.enemies)||!Array.isArray(checkpoint.spawnQueue)||checkpoint.towers.length>1000||checkpoint.enemies.length>2000||checkpoint.spawnQueue.length>200||!validLedger)return fail(client,'invalid_checkpoint','The recovery checkpoint is invalid.');
+    const earthquakeFields=checkpoint?.earthquakeFields;
+    const validEarthquakeFields=earthquakeFields===undefined||(Array.isArray(earthquakeFields)&&earthquakeFields.length<=1024&&earthquakeFields.every(field=>field&&Number.isSafeInteger(field.id)&&field.id>0&&Number.isFinite(field.x)&&field.x>=0&&field.x<=4096&&Number.isFinite(field.y)&&field.y>=0&&field.y<=4096&&Number.isFinite(field.radius)&&field.radius>0&&field.radius<=4096&&Number.isFinite(field.dps)&&field.dps>=0&&field.dps<=100000&&Number.isFinite(field.expiresAt)&&field.expiresAt>=0&&['normal','piercing','magic','siege','elemental','support','economic'].includes(field.attackType||'siege')&&(!field.ownerId||playerIds.has(field.ownerId))));
+    if(!checkpoint||typeof checkpoint!=='object'||!Array.isArray(checkpoint.towers)||!Array.isArray(checkpoint.enemies)||!Array.isArray(checkpoint.spawnQueue)||checkpoint.towers.length>1000||checkpoint.enemies.length>2000||checkpoint.spawnQueue.length>200||!validLedger||!validEarthquakeFields)return fail(client,'invalid_checkpoint','The recovery checkpoint is invalid.');
     room.lastCheckpoint=checkpoint;
     touchRoom(room);
 }
