@@ -1,6 +1,6 @@
 {
   "name": "wintermaul-web",
-  "version": "0.97.0",
+  "version": "0.98.0",
   "private": true,
   "description": "Wintermaul Web multiplayer with per-player gold and synchronized matches",
   "main": "server/server.js",
