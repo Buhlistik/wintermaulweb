@@ -23,6 +23,8 @@ let loadedScript='';const browser={window:{},document:{write(value){loadedScript
 vm.runInNewContext(generated,browser);
 assert.equal(browser.window.WINTERMAUL_RELEASE_INFO.releaseVersion,config.releaseVersion);
 assert.match(loadedScript,new RegExp(`multiplayer-lobby\\.js\\?v=${config.releaseVersion.replace(/\./g,'\\.')}`),'the generated cache key matches the one release version');
+const rendered=release.renderedIndex('<title>Wintermaul v.__WINTERMAUL_RELEASE_DISPLAY_VERSION__</title><script src="./assets/js/release-config.js?v=__WINTERMAUL_RELEASE_VERSION__"></script>',config);
+assert.ok(rendered.includes(`<title>Wintermaul v.${config.releaseVersion.split('.')[1]}</title>`),'the visible site title is generated from the canonical release version');
 assert.deepEqual(release.diffWebhostFiles({ 'index.html':'old','assets/towers/a.png':'same' },{ 'index.html':'new','assets/towers/a.png':'same','assets/js/release-config.js':'new' }),{
     changed:['assets/js/release-config.js','index.html'],removed:[]
 },'webhost packages contain only added or changed paths');

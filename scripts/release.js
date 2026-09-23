@@ -66,6 +66,10 @@ function walkFiles(root,relative='',files=new Map()){
 }
 
 function renderedIndex(source,config){
+    const visibleVersion=`<title>Wintermaul v.${config.releaseVersion.split('.')[1]}</title>`;
+    const titlePlaceholder='<title>Wintermaul v.__WINTERMAUL_RELEASE_DISPLAY_VERSION__</title>';
+    if(source.split(titlePlaceholder).length!==2)throw new Error('index.html must contain one generated Wintermaul release title placeholder.');
+    source=source.replace(titlePlaceholder,visibleVersion);
     const tag=`<script src="./assets/js/release-config.js?v=${config.releaseVersion}"></script>`;
     const scripts=/<script\b[^>]*\bsrc=["']\.\/assets\/js\/(?:multiplayer-lobby|release-config)\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>/gi;
     const matches=source.match(scripts)||[];
@@ -85,7 +89,11 @@ function projectChecks(config){
     const duplicate=fs.readFileSync(path.join(ROOT,'multiplayer-lobby.js'));
     if(!client.equals(duplicate))throw new Error('Root and webhost multiplayer client copies differ.');
     const indexPath=path.join(ROOT,'index.html');
-    if(fs.existsSync(indexPath)&&!fs.readFileSync(indexPath,'utf8').includes('./assets/js/release-config.js?v=__WINTERMAUL_RELEASE_VERSION__'))throw new Error('index.html must use the generated release-config script and version placeholder.');
+    if(fs.existsSync(indexPath)){
+        const index=fs.readFileSync(indexPath,'utf8');
+        if(!index.includes('./assets/js/release-config.js?v=__WINTERMAUL_RELEASE_VERSION__'))throw new Error('index.html must use the generated release-config script and version placeholder.');
+        if(!index.includes('<title>Wintermaul v.__WINTERMAUL_RELEASE_DISPLAY_VERSION__</title>'))throw new Error('index.html must use the generated release title placeholder.');
+    }
 }
 
 function readBaseline(){
@@ -204,4 +212,4 @@ if(require.main===module){
     try{run();}catch(error){console.error(`Release workflow failed: ${error.message}`);process.exitCode=1;}
 }
 
-module.exports={compatibleClient,diffWebhostFiles,generatedReleaseConfig,validateReleaseConfig};
+module.exports={compatibleClient,diffWebhostFiles,generatedReleaseConfig,renderedIndex,validateReleaseConfig};

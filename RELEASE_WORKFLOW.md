@@ -14,7 +14,7 @@ npm run release:check
 npm run release:package -- --webroot /path/to/current/webroot --source-index /path/to/current/index.html
 ```
 
-The package step reads the webhost snapshot as its asset source, takes the current `index.html` from `--source-index` (or the project root when omitted) and the multiplayer client from the project, generates `assets/js/release-config.js`, updates the cache key from `release.json`, then writes `release-output/Wintermaul-webhost-v<version>.zip`. The archive contains only files whose hashes differ from `.release/webhost-baseline.json`, with webroot paths preserved. It leaves analytics PHP and analytics data out of the game upload.
+The package step reads the webhost snapshot as its asset source, takes the current `index.html` from `--source-index` (or the project root when omitted) and the multiplayer client from the project, generates the visible title version and `assets/js/release-config.js`, updates client cache keys from `release.json`, then writes `release-output/Wintermaul-webhost-v<version>.zip`. The archive contains only files whose hashes differ from `.release/webhost-baseline.json`, with webroot paths preserved. It leaves analytics PHP and analytics data out of the game upload.
 
 Upload the backend commit to Render first so current and explicitly compatible older browser clients can connect during rollout. Then upload the ZIP contents to the webhost, preserving paths. After confirming the upload, record the new baseline with:
 

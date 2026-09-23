@@ -5,6 +5,7 @@ const net=require('net');
 const path=require('path');
 const {spawn}=require('child_process');
 const WebSocket=require('ws');
+const RELEASE=require('../release.json');
 
 function freePort(){
     return new Promise((resolve,reject)=>{
@@ -22,7 +23,7 @@ function waitForServer(child){
         child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Phase 5 server exited with code ${code}.`));});
     });
 }
-function connect(baseUrl,session,{release='0.99.0',protocol='wintermaul-mp/1'}={}){
+function connect(baseUrl,session,{release=RELEASE.releaseVersion,protocol=RELEASE.multiplayer.protocolId}={}){
     return new Promise((resolve,reject)=>{
         const url=new URL(baseUrl);url.searchParams.set('session',session);url.searchParams.set('release',release);
         if(protocol){url.searchParams.set('protocol',protocol);url.searchParams.set('version','0.98.0');}
@@ -70,11 +71,11 @@ function connect(baseUrl,session,{release='0.99.0',protocol='wintermaul-mp/1'}={
     try{
         const siteUrl=new URL(baseUrl);siteUrl.protocol=siteUrl.protocol==='wss:'?'https:':'http:';siteUrl.pathname='/';siteUrl.search='';
         const healthResponse=await fetch(new URL('/health',siteUrl));
-        assert.deepEqual(await healthResponse.json(),{ok:true,releaseVersion:'0.99.0',protocolId:'wintermaul-mp/1',protocolVersion:'wintermaul-mp/1',rooms:0,players:0});
+        assert.deepEqual(await healthResponse.json(),{ok:true,releaseVersion:RELEASE.releaseVersion,protocolId:RELEASE.multiplayer.protocolId,protocolVersion:RELEASE.multiplayer.protocolId,rooms:0,players:0});
 
         const outdated=await connect(baseUrl,'phase5-old-client-000001',{release:'0.79.0',protocol:null});
         const mismatch=await outdated.waitFor(message=>message.type==='incompatible_version');
-        assert.equal(mismatch.requiredReleaseVersion,'0.99.0');assert.equal(mismatch.requiredProtocolId,'wintermaul-mp/1');await outdated.close();
+        assert.equal(mismatch.requiredReleaseVersion,RELEASE.releaseVersion);assert.equal(mismatch.requiredProtocolId,RELEASE.multiplayer.protocolId);await outdated.close();
         const legacy=await connect(baseUrl,'phase5-legacy-client-000001',{release:'0.98.0',protocol:null});
         const legacyWelcome=await legacy.waitFor(message=>message.type==='welcome');assert.equal(legacyWelcome.protocolId,'wintermaul-mp/1');await legacy.close();
         const olderLegacy=await connect(baseUrl,'phase5-older-legacy-client-001',{release:'0.97.0',protocol:null});
@@ -89,7 +90,7 @@ function connect(baseUrl,session,{release='0.99.0',protocol='wintermaul-mp/1'}={
             host.waitFor(message=>message.type==='welcome'),guest.waitFor(message=>message.type==='welcome')
         ]);
         assert.equal(hostWelcome.clientId,hostSession);assert.equal(guestWelcome.clientId,guestSession);
-        assert.equal(hostWelcome.releaseVersion,'0.99.0');assert.equal(hostWelcome.protocolId,'wintermaul-mp/1');
+        assert.equal(hostWelcome.releaseVersion,RELEASE.releaseVersion);assert.equal(hostWelcome.protocolId,RELEASE.multiplayer.protocolId);
         host.send('latency_ping',{clientTime:123});
         const pong=await host.waitFor(message=>message.type==='latency_pong');assert.equal(pong.clientTime,123);assert.ok(pong.serverTime>0);
 
