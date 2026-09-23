@@ -22,6 +22,8 @@ Release 1.16 lowers menu and game music output and raises the procedural tower/e
 
 Release 1.17 removes enemy-to-enemy separation so overlapping units cannot block or stall one another, and adds a top-left in-game Menu button that opens the existing Escape options panel. It does not change multiplayer state and remains compatible with releases 1.12 through 1.16 on protocol `/2`.
 
+Release 1.18 scales multiplayer enemy health by 50% per additional connected player, adds the `GREEDISGOOD` 9999-gold cheat for single-player matches, reduces projectile artwork size, and makes a small shared music/SFX level adjustment. The multiplayer health change uses the existing authoritative snapshot fields, so protocol `/2` remains compatible with releases 1.12 through 1.17.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
