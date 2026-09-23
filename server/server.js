@@ -41,7 +41,7 @@ const HUMAN_TOWER_COSTS=new Map([
 ]);
 const HUMAN_UPGRADE_COSTS=new Map([
     ['alliance-arrow-tower',[125,175]],['crystal-sentinel',[150,175]],['dwarven-cannon',[200,225]],
-    ['merchant-house',[75,50]],['command-banner',[250,275]],['grand-fire-spire',[450,500]]
+    ['merchant-house',[150,200]],['command-banner',[250,275]],['grand-fire-spire',[450,500]]
 ]);
 const ORC_UPGRADE_COSTS=new Map([
     ['orc-spiked-bunker',[90,100]],['orc-watchtower',[225,275]],['orc-war-forge',[275,325]],
