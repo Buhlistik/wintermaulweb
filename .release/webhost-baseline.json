@@ -1,10 +1,10 @@
 {
-  "releaseVersion": "0.99.0",
+  "releaseVersion": "0.109.0",
   "files": {
     "assets/images/loadingscreen.png": "d03c07878f317f5409308328219f944b19b9c543ab3d9ce102d3f07903f9cc81",
     "assets/images/mapbackground.jpg": "4a9888245a0727b97fb128d4ac528f5ff49a436f9468c8c29c4b41f4b5528d1e",
     "assets/js/multiplayer-lobby.js": "7390141a2063cff6452dd39bb577bd35ed93e7fd43360a55664cb7f8e5da08af",
-    "assets/js/release-config.js": "eb466686b75fba9959074714185478fd37e3e7d3b62543b5b6400da95a656e75",
+    "assets/js/release-config.js": "4a0d811b7de7d87ec72942116d2850746f88cebe4eec8068cb9d64230b54483f",
     "assets/maps/map_level.js": "1e17a836d459b699bd5066b28958e95b19c7cb89a150f4abb5499c81c14b7363",
     "assets/maps/map_level.tdml": "5c8208a4e75e6d38d68e3ed4ff2918bf40511284a1cc07942cb6b7b6e075cfd6",
     "assets/music/ingamemusic.mp3": "20429b836fc40f2db17345e458cb60d95bbc8bc066e0ef73d17601efc2b9b97e",
@@ -101,8 +101,9 @@
     "assets/UI/cursor_nightelf.png": "a8fa016af0d9d682a878530ff9a82f6bff92a15cd837726662a6c2dc14e5e0fb",
     "assets/UI/cursor_orc.png": "3ccd564669e68493f1f66bf44f7bd0011c85fcea5cfd867f409b04e77e4280c1",
     "assets/UI/cursor_undead.png": "eafe290794992c6a6ea15b0e691a976b289e4e30986e057df752b48bf2cbd9cd",
+    "assets/video/menubackground-poster.webp": "27e4e2c26a7eaa8258a308db8d76dacbd0658297a29720feb9efea8c47365f77",
     "assets/video/menubackground.mp4": "b294ddc1251f860eb1e75996601051dd3d4b8aeb2a3cd02fe6cb06fb7ad11586",
     "assets/video/menubackground.webm": "84daf8c04b9c6d0254d39487332ea5955bf387e6d0f72ba9bf6b79b0d4a04ca5",
-    "index.html": "83d00bc780560a1c5569132d075dca4520498c4250d907f26d345398a4ee7277"
+    "index.html": "221e03a8d28bec893edc4842df4ca513045c6477a036e89fc6eed7535313ce18"
   }
 }

@@ -4,12 +4,15 @@
 
 The protocol accepts new clients with the exact protocol ID. It accepts older clients only when their release is listed in `compatibleLegacyReleaseVersions`. Keep that list in ascending order and remove a release when it can no longer exchange valid game state. The server keeps strict game-state validation after the handshake.
 
+Public versions now use `1.10`, `1.11`, … `1.99`, then `2.0`. The package command derives npm-compatible package versions (`1.10.0`) from the same release value; browser titles, cache keys, diagnostics, and ZIP names use `1.10`.
+
+The 1.10 balance pass changes upgrade costs and combat rules, so it starts protocol `wintermaul-mp/2`. Older balance rules cannot safely share purchases and host migration with this release. Future releases using these same compatible rules keep `/2` even when their release number changes.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
 
 ```sh
-npm test
 npm run release:check
 npm run release:package -- --webroot /path/to/current/webroot --source-index /path/to/current/index.html
 ```

@@ -12,10 +12,13 @@ const MANIFEST_PATH=path.join(ROOT,'release.json');
 const BASELINE_PATH=path.join(ROOT,'.release','webhost-baseline.json');
 const OUTPUT_DIR=path.join(ROOT,'release-output');
 
+function npmVersion(version){return version.split('.').length===2?`${version}.0`:version;}
+function displayVersion(version){return version.split('.').length===2?version:version.split('.')[1];}
+
 function validateReleaseConfig(config){
-    const semver=/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-    const compare=(left,right)=>left.split('.').map(Number).reduce((result,part,index)=>result||part-Number(right.split('.')[index]),0);
-    if(!config||typeof config!=='object'||!semver.test(config.releaseVersion||''))throw new Error('release.json needs a numeric releaseVersion such as 0.99.0.');
+    const semver=/^(?:(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)|[1-9]\d*\.(?:0|[1-9]\d?))$/;
+    const compare=(left,right)=>npmVersion(left).split('.').map(Number).reduce((result,part,index)=>result||part-Number(npmVersion(right).split('.')[index]),0);
+    if(!config||typeof config!=='object'||!semver.test(config.releaseVersion||''))throw new Error('release.json needs a numeric releaseVersion such as 1.10 (legacy 0.109.0 is also supported).');
     if(!config.multiplayer||typeof config.multiplayer.protocolId!=='string'||!/^wintermaul-mp\/\d+$/.test(config.multiplayer.protocolId))throw new Error('release.json needs a multiplayer protocolId such as wintermaul-mp/1.');
     const legacy=config.multiplayer.compatibleLegacyReleaseVersions;
     if(!Array.isArray(legacy)||legacy.some(version=>!semver.test(version))||new Set(legacy).size!==legacy.length||legacy.some(version=>compare(version,config.releaseVersion)>=0)||legacy.some((version,index)=>index>0&&compare(legacy[index-1],version)>=0))throw new Error('compatibleLegacyReleaseVersions must contain unique, older releases in ascending order.');
@@ -66,7 +69,7 @@ function walkFiles(root,relative='',files=new Map()){
 }
 
 function renderedIndex(source,config){
-    const visibleVersion=`<title>Wintermaul v.${config.releaseVersion.split('.')[1]}</title>`;
+    const visibleVersion=`<title>Wintermaul v.${displayVersion(config.releaseVersion)}</title>`;
     const titlePlaceholder='<title>Wintermaul v.__WINTERMAUL_RELEASE_DISPLAY_VERSION__</title>';
     if(source.split(titlePlaceholder).length!==2)throw new Error('index.html must contain one generated Wintermaul release title placeholder.');
     source=source.replace(titlePlaceholder,visibleVersion);
@@ -80,7 +83,7 @@ function renderedIndex(source,config){
 function projectChecks(config){
     const packageFile=JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8'));
     const lockFile=JSON.parse(fs.readFileSync(path.join(ROOT,'package-lock.json'),'utf8'));
-    if(packageFile.version!==config.releaseVersion||lockFile.version!==config.releaseVersion||lockFile.packages?.['']?.version!==config.releaseVersion)throw new Error('package.json and package-lock.json must match release.json. Run the release package command to synchronize them.');
+    if(packageFile.version!==npmVersion(config.releaseVersion)||lockFile.version!==npmVersion(config.releaseVersion)||lockFile.packages?.['']?.version!==npmVersion(config.releaseVersion))throw new Error('package.json and package-lock.json must match release.json. Run the release package command to synchronize them.');
     const server=fs.readFileSync(path.join(ROOT,'server/server.js'),'utf8');
     if(!server.includes("require('../release.json')")||!server.includes('RELEASE_CONFIG.multiplayer.protocolId'))throw new Error('The server must read its release and protocol values from release.json.');
     const client=fs.readFileSync(path.join(ROOT,'assets/js/multiplayer-lobby.js'));
@@ -117,9 +120,9 @@ function syncPackageVersion(config){
     const packagePath=path.join(ROOT,'package.json'),lockPath=path.join(ROOT,'package-lock.json');
     const packageData=JSON.parse(fs.readFileSync(packagePath,'utf8'));
     const lockData=JSON.parse(fs.readFileSync(lockPath,'utf8'));
-    packageData.version=config.releaseVersion;
-    lockData.version=config.releaseVersion;
-    if(lockData.packages?.[''])lockData.packages[''].version=config.releaseVersion;
+    packageData.version=npmVersion(config.releaseVersion);
+    lockData.version=npmVersion(config.releaseVersion);
+    if(lockData.packages?.[''])lockData.packages[''].version=npmVersion(config.releaseVersion);
     fs.writeFileSync(packagePath,`${JSON.stringify(packageData,null,2)}\n`);
     fs.writeFileSync(lockPath,`${JSON.stringify(lockData,null,2)}\n`);
 }
@@ -210,4 +213,4 @@ if(require.main===module){
     try{run();}catch(error){console.error(`Release workflow failed: ${error.message}`);process.exitCode=1;}
 }
 
-module.exports={compatibleClient,diffWebhostFiles,generatedReleaseConfig,renderedIndex,validateReleaseConfig};
+module.exports={npmVersion,displayVersion,compatibleClient,diffWebhostFiles,generatedReleaseConfig,renderedIndex,validateReleaseConfig};

@@ -40,20 +40,20 @@ const HUMAN_TOWER_COSTS=new Map([
     ['command-banner',200],['dwarven-cannon',125],['grand-fire-spire',400]
 ]);
 const HUMAN_UPGRADE_COSTS=new Map([
-    ['alliance-arrow-tower',[125,175]],['crystal-sentinel',[150,175]],['dwarven-cannon',[200,225]],
-    ['merchant-house',[150,200]],['command-banner',[250,275]],['grand-fire-spire',[450,500]]
+    ['alliance-arrow-tower',[125,175]],['crystal-sentinel',[125,175]],['dwarven-cannon',[200,225]],
+    ['merchant-house',[150,200]],['command-banner',[200,225]],['grand-fire-spire',[450,425]]
 ]);
 const ORC_UPGRADE_COSTS=new Map([
-    ['orc-spiked-bunker',[90,100]],['orc-watchtower',[225,275]],['orc-war-forge',[275,325]],
-    ['orc-war-hut',[250,250]],['orc-fel-well',[350,400]],['orc-dragon-pit',[475,525]]
+    ['orc-spiked-bunker',[90,100]],['orc-watchtower',[175,200]],['orc-war-forge',[275,275]],
+    ['orc-war-hut',[250,175]],['orc-fel-well',[200,300]],['orc-dragon-pit',[475,525]]
 ]);
 const UNDEAD_UPGRADE_COSTS=new Map([
-    ['undead-ember-spire',[130,165]],['undead-frost-spire',[190,240]],['undead-bone-cage',[250,300]],
-    ['undead-blighted-altar',[420,500]],['undead-bonefire-tower',[540,630]],['undead-soul-prism',[720,820]]
+    ['undead-ember-spire',[130,165]],['undead-frost-spire',[165,210]],['undead-bone-cage',[200,225]],
+    ['undead-blighted-altar',[420,500]],['undead-bonefire-tower',[400,475]],['undead-soul-prism',[450,550]]
 ]);
 const NIGHTELF_UPGRADE_COSTS=new Map([
-    ['nightelf-moonwell',[140,180]],['nightelf-ancient-protector',[230,290]],['nightelf-flame-warden',[340,380]],
-    ['nightelf-lunar-sentinel',[450,540]],['nightelf-runestone',[600,720]],['nightelf-ancient-of-lore',[860,1000]]
+    ['nightelf-moonwell',[140,180]],['nightelf-ancient-protector',[200,220]],['nightelf-flame-warden',[175,250]],
+    ['nightelf-lunar-sentinel',[450,350]],['nightelf-runestone',[500,500]],['nightelf-ancient-of-lore',[500,650]]
 ]);
 const ORC_TOWER_COSTS=new Map([['orc-spiked-bunker',25],['orc-watchtower',100],['orc-war-forge',150],['orc-war-hut',175],['orc-fel-well',300],['orc-dragon-pit',500]]);
 const UNDEAD_TOWER_COSTS=new Map([['undead-ember-spire',80],['undead-frost-spire',120],['undead-bone-cage',190],['undead-blighted-altar',320],['undead-bonefire-tower',440],['undead-soul-prism',600]]);
