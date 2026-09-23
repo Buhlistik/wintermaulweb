@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "test": "node tests/catalog-integrity.test.js && node tests/ghost-swarm.test.js && node tests/lifetime-stats.test.js && node tests/phase5-safeguards.test.js"
+    "test": "node tests/catalog-integrity.test.js && node tests/ghost-swarm.test.js && node tests/lifetime-stats.test.js && node tests/tower-combat-simulation.test.js && node tests/phase5-safeguards.test.js"
   },
   "engines": {
     "node": ">=20"

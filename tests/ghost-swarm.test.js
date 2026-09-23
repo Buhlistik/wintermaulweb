@@ -16,10 +16,11 @@ const end=html.indexOf('\nfunction completeWave(){',start);
 assert.ok(start>=0&&end>start,'tower combat function is present');
 const tower={...stats,id:7,x:0,y:0,ownerId:'solo',cooldown:0};
 const enemy={id:11,x:82,y:0,hp:10000,path:[]};
-const game={towers:[tower],enemies:[enemy],elapsed:0};
+const game={towers:[tower],enemies:[enemy],elapsed:0,projectiles:[]};
 const context={game,CELL_W:40,Math,
-    updateContactEffects(){},updateSupportTowerBuffs(){},updateMagmaPools(){},updateEarthquakeFields(){},updateStatusEffects(){},resolvePoisonDeathBursts(){},
-    cellCenter(){return {x:0,y:0};},towerCombatBonuses(){return {range:1,speed:1,damage:1};},towerDamageAgainst(t){return t.damage;}
+    updateContactEffects(){},updateSupportTowerBuffs(){},updateSimulatedAttacks(){},updateMagmaPools(){},updateEarthquakeFields(){},updateStatusEffects(){},resolvePoisonDeathBursts(){},
+    cellCenter(){return {x:0,y:0};},towerCombatBonuses(){return {range:1,speed:1,damage:1};},towerDamageAgainst(t){return t.damage;},
+    applyTrackedDamage(target,damage,source){target.hp-=damage;target.damaged=true;target.lastHitOwnerId=source.ownerId||null;target.lastHitRace=source.race||null;}
 };
 vm.runInNewContext(html.slice(start,end),context);
 const step=()=>{game.elapsed+=.1;context.runTowerCombat(.1);};

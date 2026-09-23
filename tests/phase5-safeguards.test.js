@@ -114,12 +114,14 @@ function connect(baseUrl,session,version='0.97.0'){
 
         const projectile={id:1,kind:'shot',fromX:100,fromY:120,toX:260,toY:180,role:'arrow',at:18.48};
         const earthquakeField={id:1,sourceTowerId:3,ownerId:hostSession,x:120,y:150,radius:12.8,dps:16,attackType:'siege',expiresAt:21.5};
-        const state={gold:900,playerGold:{[hostSession]:900,[guestSession]:825},lives:24,currentWave:3,maxWaves:25,waveActive:true,gameOver:false,speedMultiplier:1,elapsed:18.5,nextTowerId:4,nextEnemyId:3,nextMagmaId:1,nextEarthquakeId:2,nextProjectileId:2,projectileEvents:[projectile],outcome:null,towers:[{id:1,typeId:'alliance-arrow-tower',x:12,y:18,ownerId:guestSession},{id:3,typeId:'alliance-arrow-tower',x:22,y:18,ownerId:hostSession}],enemies:[{id:2,typeId:'enemy-grunt',x:11,y:9,hp:75,maxHp:100}],magmaPools:[],earthquakeFields:[earthquakeField]};
+        const simulatedProjectile={id:8,mode:'projectile',role:'arrow',x:140,y:145,fromX:100,fromY:120,toX:260,toY:180,angle:.36,age:.1,lifetime:.3,collisionShape:'circle',radius:6,maxRadius:0,spread:0,breathHalfAngle:24,stage:0};
+        const state={gold:900,playerGold:{[hostSession]:900,[guestSession]:825},lives:24,currentWave:3,maxWaves:25,waveActive:true,gameOver:false,speedMultiplier:1,elapsed:18.5,nextTowerId:4,nextEnemyId:3,nextMagmaId:1,nextEarthquakeId:2,nextProjectileId:2,projectileEvents:[projectile],attackProjectiles:[simulatedProjectile],outcome:null,towers:[{id:1,typeId:'alliance-arrow-tower',x:12,y:18,ownerId:guestSession},{id:3,typeId:'alliance-arrow-tower',x:22,y:18,ownerId:hostSession}],enemies:[{id:2,typeId:'enemy-grunt',x:11,y:9,hp:75,maxHp:100}],magmaPools:[],earthquakeFields:[earthquakeField]};
         const checkpoint={...state,enemies:[{...state.enemies[0],path:[[10,9],[11,9],[12,9]],pathIndex:1,slowEffects:{}}],spawnQueue:[[]],spawnTimer:.2,spawnInterval:.28};
         host.send('game_state',{state});host.send('game_checkpoint',{checkpoint});
         const splitGold=await guest.waitFor(message=>message.type==='game_state'&&message.revision===1);
         assert.equal(splitGold.state.playerGold[hostSession],900);assert.equal(splitGold.state.playerGold[guestSession],825);
         assert.deepEqual(splitGold.state.projectileEvents,[projectile]);
+        assert.deepEqual(splitGold.state.attackProjectiles,[simulatedProjectile]);
         assert.deepEqual(splitGold.state.earthquakeFields,[earthquakeField]);
         const breath={id:2,kind:'breath',fromX:100,fromY:120,toX:400,toY:120,spread:180,role:'dragon',at:18.49};
         host.send('game_state',{state:{...state,nextProjectileId:3,projectileEvents:[breath]}});
@@ -153,6 +155,8 @@ function connect(baseUrl,session,version='0.97.0'){
         const splitNewRaceEffects=await guest.waitFor(message=>message.type==='game_state'&&message.revision===5);
         assert.deepEqual(splitNewRaceEffects.state.projectileEvents,newRaceEffects);
         host.send('game_state',{state:{...state,projectileEvents:[{...projectile,role:'script'}]}});
+        await host.waitFor(message=>message.type==='error'&&message.code==='invalid_game_state');
+        host.send('game_state',{state:{...state,attackProjectiles:[{...simulatedProjectile,role:'script'}]}});
         await host.waitFor(message=>message.type==='error'&&message.code==='invalid_game_state');
 
         host.send('game_command',{command:{action:'sell_tower',towerId:1}});
