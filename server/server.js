@@ -386,9 +386,24 @@ const server=http.createServer((request,response)=>{
     if(filePath!==SITE_ROOT&&!filePath.startsWith(`${SITE_ROOT}${path.sep}`)){response.writeHead(403);response.end('Forbidden');return;}
     fs.stat(filePath,(statError,stat)=>{
         if(statError||!stat.isFile()){response.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'});response.end('Not found');return;}
-        const headers={'Content-Type':MIME_TYPES[path.extname(filePath).toLowerCase()]||'application/octet-stream'};
-        if(path.extname(filePath)==='.html'||path.extname(filePath)==='.js')headers['Cache-Control']='no-cache';
-        response.writeHead(200,headers);fs.createReadStream(filePath).pipe(response);
+        const etag=`W/"${stat.size.toString(16)}-${Math.trunc(stat.mtimeMs).toString(16)}"`;
+        const lastModified=stat.mtime.toUTCString();
+        const headers={
+            'Content-Type':MIME_TYPES[path.extname(filePath).toLowerCase()]||'application/octet-stream',
+            'Cache-Control':'no-cache, must-revalidate',
+            'ETag':etag,
+            'Last-Modified':lastModified
+        };
+        const ifNoneMatch=request.headers['if-none-match'];
+        const ifModifiedSince=request.headers['if-modified-since'];
+        const etagMatches=ifNoneMatch&&ifNoneMatch.split(',').some(value=>value.trim()==='*'||value.trim()===etag||value.trim()===etag.slice(2));
+        const dateMatches=!ifNoneMatch&&ifModifiedSince&&Date.parse(ifModifiedSince)>=Math.floor(stat.mtimeMs/1000)*1000;
+        if((request.method==='GET'||request.method==='HEAD')&&(etagMatches||dateMatches)){
+            response.writeHead(304,headers);response.end();return;
+        }
+        response.writeHead(200,headers);
+        if(request.method==='HEAD'){response.end();return;}
+        fs.createReadStream(filePath).pipe(response);
     });
 });
 

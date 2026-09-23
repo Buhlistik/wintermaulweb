@@ -14,6 +14,8 @@ Release 1.12 splits the top-center spawn across left and right routes and spaces
 
 Release 1.13 improves synchronized spawn spacing, clears attacks when waves finish, adds locally synthesized tower and enemy effects, and catches up host simulation when a background tab throttles rendering. Its multiplayer state remains compatible with 1.12 and continues using protocol `/2`.
 
+Release 1.14 makes browsers revalidate game files on visits. The Node host responds with ETags and Last-Modified validators, and the webhost `.htaccess` sets cache revalidation for site files. This cache-only change keeps multiplayer on protocol `/2` and accepts releases 1.12 and 1.13.
+
 ## Build and check
 
 From the complete Wintermaul source folder:

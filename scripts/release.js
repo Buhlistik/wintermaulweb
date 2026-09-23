@@ -50,7 +50,7 @@ function generatedReleaseConfig(config){
 }
 
 function isWebhostPath(relative){
-    if(relative==='index.html')return true;
+    if(relative==='index.html'||relative==='.htaccess')return true;
     if(!relative.startsWith('assets/'))return false;
     if(relative.startsWith('assets/js/'))return ['assets/js/multiplayer-lobby.js','assets/js/release-config.js'].includes(relative);
     return true;
