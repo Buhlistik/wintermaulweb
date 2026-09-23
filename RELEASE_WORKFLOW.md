@@ -16,6 +16,8 @@ Release 1.13 improves synchronized spawn spacing, clears attacks when waves fini
 
 Release 1.14 makes browsers revalidate game files on visits. The Node host responds with ETags and Last-Modified validators, and the webhost `.htaccess` sets cache revalidation for site files. This cache-only change keeps multiplayer on protocol `/2` and accepts releases 1.12 and 1.13.
 
+Release 1.15 removes redundant headings from the statistics and Compendium menus and centers the variant artwork. It does not change multiplayer state and remains compatible with releases 1.12 through 1.14 on protocol `/2`.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
