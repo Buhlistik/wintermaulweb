@@ -12,6 +12,8 @@ The 1.11 Naga compendium unlock is stored in each player's browser. It adds no N
 
 Release 1.12 splits the top-center spawn across left and right routes and spaces groups farther apart. The host already transmits each enemy's path, so this requires no multiplayer protocol change.
 
+Release 1.13 improves synchronized spawn spacing, clears attacks when waves finish, adds locally synthesized tower and enemy effects, and catches up host simulation when a background tab throttles rendering. Its multiplayer state remains compatible with 1.12 and continues using protocol `/2`.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
