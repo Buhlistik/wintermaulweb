@@ -10,6 +10,8 @@ The 1.10 balance pass changes upgrade costs and combat rules, so it starts proto
 
 The 1.11 Naga compendium unlock is stored in each player's browser. It adds no Naga tower definitions or new multiplayer state, so it remains compatible with protocol `/2`.
 
+Release 1.12 splits the top-center spawn across left and right routes and spaces groups farther apart. The host already transmits each enemy's path, so this requires no multiplayer protocol change.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
