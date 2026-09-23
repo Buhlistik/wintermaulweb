@@ -22,7 +22,7 @@ function waitForServer(child){
         child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Phase 5 server exited with code ${code}.`));});
     });
 }
-function connect(baseUrl,session,version='0.91.0'){
+function connect(baseUrl,session,version='0.92.0'){
     return new Promise((resolve,reject)=>{
         const url=new URL(baseUrl);url.searchParams.set('session',session);url.searchParams.set('version',version);
         const ws=new WebSocket(url),messages=[],waiters=[];
@@ -68,11 +68,11 @@ function connect(baseUrl,session,version='0.91.0'){
     try{
         const siteUrl=new URL(baseUrl);siteUrl.protocol=siteUrl.protocol==='wss:'?'https:':'http:';siteUrl.pathname='/';siteUrl.search='';
         const healthResponse=await fetch(new URL('/health',siteUrl));
-        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.91.0',rooms:0,players:0});
+        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.92.0',rooms:0,players:0});
 
         const outdated=await connect(baseUrl,'phase5-old-client-000001','0.79.0');
         const mismatch=await outdated.waitFor(message=>message.type==='incompatible_version');
-        assert.equal(mismatch.requiredVersion,'0.91.0');await outdated.close();
+        assert.equal(mismatch.requiredVersion,'0.92.0');await outdated.close();
 
         const hostSession='phase5-host-session-000001';
         const guestSession='phase5-guest-session-00001';
@@ -81,7 +81,7 @@ function connect(baseUrl,session,version='0.91.0'){
             host.waitFor(message=>message.type==='welcome'),guest.waitFor(message=>message.type==='welcome')
         ]);
         assert.equal(hostWelcome.clientId,hostSession);assert.equal(guestWelcome.clientId,guestSession);
-        assert.equal(hostWelcome.protocolVersion,'0.91.0');
+        assert.equal(hostWelcome.protocolVersion,'0.92.0');
         host.send('latency_ping',{clientTime:123});
         const pong=await host.waitFor(message=>message.type==='latency_pong');assert.equal(pong.clientTime,123);assert.ok(pong.serverTime>0);
 
@@ -125,6 +125,10 @@ function connect(baseUrl,session,version='0.91.0'){
         host.send('game_state',{state:{...state,nextProjectileId:3,projectileEvents:[breath]}});
         const splitBreath=await guest.waitFor(message=>message.type==='game_state'&&message.revision===2);
         assert.deepEqual(splitBreath.state.projectileEvents,[breath]);
+        const orcArrow={id:3,kind:'shot',fromX:110,fromY:145,toX:280,toY:190,role:'orc-arrow',at:18.5};
+        host.send('game_state',{state:{...state,nextProjectileId:4,projectileEvents:[orcArrow]}});
+        const splitOrcShot=await guest.waitFor(message=>message.type==='game_state'&&message.revision===3);
+        assert.deepEqual(splitOrcShot.state.projectileEvents,[orcArrow]);
         host.send('game_state',{state:{...state,projectileEvents:[{...projectile,role:'script'}]}});
         await host.waitFor(message=>message.type==='error'&&message.code==='invalid_game_state');
 

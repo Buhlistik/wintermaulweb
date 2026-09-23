@@ -10,7 +10,7 @@ const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
 const HOME_FILE='index.html';
-const PROTOCOL_VERSION='0.91.0';
+const PROTOCOL_VERSION='0.92.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_CHAT_LENGTH=200;
@@ -40,7 +40,7 @@ const HUMAN_UPGRADE_COSTS=new Map([
     ['alliance-arrow-tower',[125,175]],['crystal-sentinel',[150,175]],['dwarven-cannon',[200,225]],
     ['merchant-house',[200,250]],['command-banner',[250,275]],['grand-fire-spire',[450,500]]
 ]);
-const ORC_TOWER_COSTS=new Map([['orc-spiked-bunker',10],['orc-watchtower',100],['orc-war-forge',150],['orc-war-hut',175],['orc-fel-well',300],['orc-dragon-pit',500]]);
+const ORC_TOWER_COSTS=new Map([['orc-spiked-bunker',25],['orc-watchtower',100],['orc-war-forge',150],['orc-war-hut',175],['orc-fel-well',300],['orc-dragon-pit',500]]);
 const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)??ORC_TOWER_COSTS.get(typeId)??0]));
 const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[
     typeId,new Map(HUMAN_UPGRADE_COSTS.has(typeId)?HUMAN_UPGRADE_COSTS.get(typeId).map((cost,index)=>[index+1,cost]):[[1,0],[2,0]])
@@ -278,7 +278,7 @@ function gameState(client,payload){
     const projectiles=state?.projectileEvents;
     const validProjectile=projectile=>{
         if(!projectile||!Number.isSafeInteger(projectile.id)||projectile.id<=0||![projectile.fromX,projectile.fromY,projectile.toX,projectile.toY].every(value=>Number.isFinite(value)&&value>=0&&value<=4096)||!Number.isFinite(projectile.at)||projectile.at<0)return false;
-        if(projectile.kind==='shot')return ['arrow','crystal','cannon','fire','aura','fel'].includes(projectile.role);
+        if(projectile.kind==='shot')return ['arrow','orc-arrow','longbow','eagle','crystal','frost','arcane','cannon','thunder','siege','fire','magma','phoenix','aura','command','fel'].includes(projectile.role);
         return projectile.kind==='breath'&&projectile.role==='dragon'&&Number.isFinite(projectile.spread)&&projectile.spread>0&&projectile.spread<=4096;
     };
     const validProjectiles=projectiles===undefined||(Array.isArray(projectiles)&&projectiles.length<=128&&projectiles.every(validProjectile));
