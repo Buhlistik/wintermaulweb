@@ -9,8 +9,8 @@ const {WebSocketServer,WebSocket}=require('ws');
 const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
-const HOME_FILE='Wintermaul_v.83.html';
-const PROTOCOL_VERSION='0.83.0';
+const HOME_FILE='index.html';
+const PROTOCOL_VERSION='0.84.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_CHAT_LENGTH=200;
@@ -32,8 +32,18 @@ const TOWER_RACES=new Map([
     ...Object.entries(CUSTOM_TOWERS).flatMap(([race,typeIds])=>typeIds.map(typeId=>[typeId,race]))
 ]);
 const TOWER_IDS=new Set(TOWER_RACES.keys());
-const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,0]));
-const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,new Map([[1,0],[2,0]])]));
+const HUMAN_TOWER_COSTS=new Map([
+    ['alliance-arrow-tower',75],['crystal-sentinel',100],['merchant-house',150],
+    ['command-banner',200],['dwarven-cannon',125],['grand-fire-spire',400]
+]);
+const HUMAN_UPGRADE_COSTS=new Map([
+    ['alliance-arrow-tower',[125,175]],['crystal-sentinel',[150,175]],['dwarven-cannon',[200,225]],
+    ['merchant-house',[200,250]],['command-banner',[250,275]],['grand-fire-spire',[450,500]]
+]);
+const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)||0]));
+const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[
+    typeId,new Map(HUMAN_UPGRADE_COSTS.has(typeId)?HUMAN_UPGRADE_COSTS.get(typeId).map((cost,index)=>[index+1,cost]):[[1,0],[2,0]])
+]));
 const COLORS=['#ff3b3b','#3b82ff','#3fffe6','#ffb52e','#fff86a','#b066ff','#35ed65','#ff8fc9','#b8c0cc'];
 const MIME_TYPES={
     '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
