@@ -1,13 +1,13 @@
 {
   "name": "wintermaul-web",
-  "version": "0.94.0",
+  "version": "0.95.0",
   "private": true,
   "description": "Wintermaul Web multiplayer with per-player gold and synchronized matches",
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "test": "node tests/phase5-safeguards.test.js"
+    "test": "node tests/catalog-integrity.test.js && node tests/phase5-safeguards.test.js"
   },
   "engines": {
     "node": ">=20"

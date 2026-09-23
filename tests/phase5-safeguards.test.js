@@ -22,7 +22,7 @@ function waitForServer(child){
         child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Phase 5 server exited with code ${code}.`));});
     });
 }
-function connect(baseUrl,session,version='0.94.0'){
+function connect(baseUrl,session,version='0.95.0'){
     return new Promise((resolve,reject)=>{
         const url=new URL(baseUrl);url.searchParams.set('session',session);url.searchParams.set('version',version);
         const ws=new WebSocket(url),messages=[],waiters=[];
@@ -68,11 +68,11 @@ function connect(baseUrl,session,version='0.94.0'){
     try{
         const siteUrl=new URL(baseUrl);siteUrl.protocol=siteUrl.protocol==='wss:'?'https:':'http:';siteUrl.pathname='/';siteUrl.search='';
         const healthResponse=await fetch(new URL('/health',siteUrl));
-        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.94.0',rooms:0,players:0});
+        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.95.0',rooms:0,players:0});
 
         const outdated=await connect(baseUrl,'phase5-old-client-000001','0.79.0');
         const mismatch=await outdated.waitFor(message=>message.type==='incompatible_version');
-        assert.equal(mismatch.requiredVersion,'0.94.0');await outdated.close();
+        assert.equal(mismatch.requiredVersion,'0.95.0');await outdated.close();
 
         const hostSession='phase5-host-session-000001';
         const guestSession='phase5-guest-session-00001';
@@ -81,7 +81,7 @@ function connect(baseUrl,session,version='0.94.0'){
             host.waitFor(message=>message.type==='welcome'),guest.waitFor(message=>message.type==='welcome')
         ]);
         assert.equal(hostWelcome.clientId,hostSession);assert.equal(guestWelcome.clientId,guestSession);
-        assert.equal(hostWelcome.protocolVersion,'0.94.0');
+        assert.equal(hostWelcome.protocolVersion,'0.95.0');
         host.send('latency_ping',{clientTime:123});
         const pong=await host.waitFor(message=>message.type==='latency_pong');assert.equal(pong.clientTime,123);assert.ok(pong.serverTime>0);
 
@@ -141,9 +141,13 @@ function connect(baseUrl,session,version='0.94.0'){
         const newRaceEffects=[
             {id:8,kind:'meteor',fromX:180,fromY:30,toX:180,toY:200,role:'blight-meteor',duration:.58,at:18.5},
             {id:9,kind:'moonbeam',fromX:220,fromY:25,toX:220,toY:200,role:'moonbeam',at:18.5},
-            {id:10,kind:'ring',fromX:210,fromY:160,toX:280,toY:160,radius:70,role:'soul-prism',at:18.5},
-            {id:11,kind:'boomerang',fromX:180,fromY:160,toX:320,toY:100,duration:1.2,role:'moon-boomerang',at:18.5},
-            {id:12,kind:'poisonburst',fromX:300,fromY:220,toX:300,toY:220,radius:20,role:'poison-burst',at:18.5}
+            {id:10,kind:'ring',fromX:210,fromY:160,toX:280,toY:160,radius:70,role:'soul-ring-purple',duration:.5,at:18.5},
+            {id:11,kind:'boomerang',fromX:180,fromY:160,toX:320,toY:100,duration:1.2,role:'nature-boomerang',at:18.5},
+            {id:12,kind:'poisonburst',fromX:300,fromY:220,toX:300,toY:220,radius:20,role:'poison-burst',at:18.5},
+            {id:13,kind:'meteor',fromX:220,fromY:20,toX:220,toY:180,duration:.58,role:'blight-lightning',at:18.5},
+            {id:14,kind:'ghost',fromX:140,fromY:140,toX:260,toY:180,duration:.34,role:'homing-ghost',at:18.5},
+            {id:15,kind:'wave',fromX:260,fromY:190,toX:260,toY:190,radius:48,role:'water-wave',at:18.5},
+            {id:16,kind:'shot',fromX:200,fromY:160,toX:320,toY:190,role:'ethereal-purple',at:18.5}
         ];
         host.send('game_state',{state:{...state,nextProjectileId:13,projectileEvents:newRaceEffects}});
         const splitNewRaceEffects=await guest.waitFor(message=>message.type==='game_state'&&message.revision===5);
@@ -183,10 +187,22 @@ function connect(baseUrl,session,version='0.94.0'){
         guest.send('game_command',{command:{action:'place_tower',typeId:'undead-blighted-altar',x:15,y:15}});
         const undeadPlacement=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='place_tower');
         assert.equal(undeadPlacement.command.typeId,'undead-blighted-altar');assert.equal(undeadPlacement.command.actorRace,'undead');
-        host.send('game_state',{state:{...state,towers:[{id:1,typeId:'undead-blighted-altar',baseTypeId:'undead-blighted-altar',x:15,y:15,ownerId:guestSession}],playerGold:{[hostSession]:900,[guestSession]:825}}});
+        const altarTowerState={...state,towers:[{id:1,typeId:'undead-blighted-altar',baseTypeId:'undead-blighted-altar',x:15,y:15,ownerId:guestSession}],playerGold:{[hostSession]:900,[guestSession]:419}};
+        host.send('game_state',{state:altarTowerState});
         guest.send('game_command',{command:{action:'upgrade_tower',towerId:1,path:1}});
-        const freeUpgrade=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='upgrade_tower');
-        assert.equal(freeUpgrade.command.path,1);
+        await guest.waitFor(message=>message.type==='error'&&message.code==='not_enough_gold');
+        host.send('game_state',{state:{...altarTowerState,playerGold:{[hostSession]:900,[guestSession]:420}}});
+        guest.send('game_command',{command:{action:'upgrade_tower',towerId:1,path:1}});
+        const paidUndeadUpgrade=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='upgrade_tower');
+        assert.equal(paidUndeadUpgrade.command.path,1,'server should charge the configured Undead variant price');
+        const ancientTowerState={...state,towers:[{id:2,typeId:'nightelf-ancient-protector',baseTypeId:'nightelf-ancient-protector',x:15,y:15,ownerId:guestSession}],playerGold:{[hostSession]:900,[guestSession]:229}};
+        host.send('game_state',{state:ancientTowerState});
+        guest.send('game_command',{command:{action:'upgrade_tower',towerId:2,path:1}});
+        await guest.waitFor(message=>message.type==='error'&&message.code==='not_enough_gold');
+        host.send('game_state',{state:{...ancientTowerState,playerGold:{[hostSession]:900,[guestSession]:230}}});
+        guest.send('game_command',{command:{action:'upgrade_tower',towerId:2,path:1}});
+        const paidNightElfUpgrade=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='upgrade_tower');
+        assert.equal(paidNightElfUpgrade.command.path,1,'server should charge the configured Night Elf variant price');
         const undeadGoldState={...state,towers:[],playerGold:{[hostSession]:900,[guestSession]:79}};
         host.send('game_state',{state:undeadGoldState});
         guest.send('game_command',{command:{action:'place_tower',typeId:'undead-ember-spire',x:12,y:14}});

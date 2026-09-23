@@ -10,7 +10,7 @@ const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
 const HOME_FILE='index.html';
-const PROTOCOL_VERSION='0.94.0';
+const PROTOCOL_VERSION='0.95.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_CHAT_LENGTH=200;
@@ -44,12 +44,20 @@ const ORC_UPGRADE_COSTS=new Map([
     ['orc-spiked-bunker',[90,100]],['orc-watchtower',[225,275]],['orc-war-forge',[275,325]],
     ['orc-war-hut',[250,250]],['orc-fel-well',[350,400]],['orc-dragon-pit',[475,525]]
 ]);
+const UNDEAD_UPGRADE_COSTS=new Map([
+    ['undead-ember-spire',[130,165]],['undead-frost-spire',[190,240]],['undead-bone-cage',[250,300]],
+    ['undead-blighted-altar',[420,500]],['undead-bonefire-tower',[540,630]],['undead-soul-prism',[720,820]]
+]);
+const NIGHTELF_UPGRADE_COSTS=new Map([
+    ['nightelf-moonwell',[140,180]],['nightelf-ancient-protector',[230,290]],['nightelf-flame-warden',[340,380]],
+    ['nightelf-lunar-sentinel',[450,540]],['nightelf-runestone',[600,720]],['nightelf-ancient-of-lore',[860,1000]]
+]);
 const ORC_TOWER_COSTS=new Map([['orc-spiked-bunker',25],['orc-watchtower',100],['orc-war-forge',150],['orc-war-hut',175],['orc-fel-well',300],['orc-dragon-pit',500]]);
 const UNDEAD_TOWER_COSTS=new Map([['undead-ember-spire',80],['undead-frost-spire',120],['undead-bone-cage',190],['undead-blighted-altar',320],['undead-bonefire-tower',440],['undead-soul-prism',600]]);
 const NIGHTELF_TOWER_COSTS=new Map([['nightelf-moonwell',80],['nightelf-ancient-protector',130],['nightelf-flame-warden',210],['nightelf-lunar-sentinel',325],['nightelf-runestone',460],['nightelf-ancient-of-lore',650]]);
 const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)??ORC_TOWER_COSTS.get(typeId)??UNDEAD_TOWER_COSTS.get(typeId)??NIGHTELF_TOWER_COSTS.get(typeId)??0]));
 const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[
-    typeId,new Map((HUMAN_UPGRADE_COSTS.get(typeId)||ORC_UPGRADE_COSTS.get(typeId)||[0,0]).map((cost,index)=>[index+1,cost]))
+    typeId,new Map((HUMAN_UPGRADE_COSTS.get(typeId)||ORC_UPGRADE_COSTS.get(typeId)||UNDEAD_UPGRADE_COSTS.get(typeId)||NIGHTELF_UPGRADE_COSTS.get(typeId)||[0,0]).map((cost,index)=>[index+1,cost]))
 ]));
 const COLORS=['#ff3b3b','#3b82ff','#3fffe6','#ffb52e','#fff86a','#b066ff','#35ed65','#ff8fc9','#b8c0cc'];
 const MIME_TYPES={
@@ -284,12 +292,13 @@ function gameState(client,payload){
     const projectiles=state?.projectileEvents;
     const validProjectile=projectile=>{
         if(!projectile||!Number.isSafeInteger(projectile.id)||projectile.id<=0||![projectile.fromX,projectile.fromY,projectile.toX,projectile.toY].every(value=>Number.isFinite(value)&&value>=0&&value<=4096)||!Number.isFinite(projectile.at)||projectile.at<0)return false;
-        if(projectile.kind==='shot')return ['arrow','orc-arrow','longbow','eagle','crystal','frost','arcane','cannon','thunder','siege','fire','magma','phoenix','aura','command','fel','shaman-orb','ethereal-red','ethereal-ice','bone-spike','ancient-rock','bonefire-fire','poison-vial'].includes(projectile.role);
+        if(projectile.kind==='shot')return ['arrow','orc-arrow','longbow','eagle','crystal','frost','arcane','cannon','thunder','siege','fire','magma','phoenix','aura','command','fel','shaman-orb','ethereal-red','ethereal-purple','ethereal-ice','bone-spike','bone-spike-large','bone-spike-venom','ancient-rock','ancient-fire-rock','ancient-blue','bonefire-fire','poison-vial'].includes(projectile.role);
         if(projectile.kind==='breath')return ['dragon','dragon-frost'].includes(projectile.role)&&Number.isFinite(projectile.spread)&&projectile.spread>0&&projectile.spread<=4096;
-        if(['lightning','beam','mist'].includes(projectile.kind))return ({lightning:['sky-thunder'],beam:['ice-beam'],mist:['purple-mist']})[projectile.kind].includes(projectile.role);
-        if(['meteor','moonbeam'].includes(projectile.kind))return ({meteor:['blight-meteor'],moonbeam:['moonbeam']})[projectile.kind].includes(projectile.role);
-        if(['ring','poisonburst'].includes(projectile.kind))return ({ring:['soul-prism'],poisonburst:['poison-burst']})[projectile.kind].includes(projectile.role)&&Number.isFinite(projectile.radius)&&projectile.radius>0&&projectile.radius<=4096;
-        if(projectile.kind==='boomerang')return projectile.role==='moon-boomerang'&&Number.isFinite(projectile.duration)&&projectile.duration>=.3&&projectile.duration<=4;
+        if(['lightning','beam','mist'].includes(projectile.kind))return ({lightning:['sky-thunder'],beam:['ice-beam','nature-beam'],mist:['purple-mist']})[projectile.kind].includes(projectile.role);
+        if(['meteor','moonbeam'].includes(projectile.kind))return ({meteor:['blight-meteor','blight-lightning'],moonbeam:['moonbeam','nature-beam']})[projectile.kind].includes(projectile.role);
+        if(['ring','poisonburst','wave'].includes(projectile.kind))return ({ring:['soul-ring-blue','soul-ring-purple'],poisonburst:['poison-burst'],wave:['water-wave']})[projectile.kind].includes(projectile.role)&&Number.isFinite(projectile.radius)&&projectile.radius>0&&projectile.radius<=4096;
+        if(projectile.kind==='boomerang')return ['moon-boomerang','nature-boomerang'].includes(projectile.role)&&Number.isFinite(projectile.duration)&&projectile.duration>=.3&&projectile.duration<=4;
+        if(projectile.kind==='ghost')return projectile.role==='homing-ghost'&&Number.isFinite(projectile.duration)&&projectile.duration>=.2&&projectile.duration<=.8;
         return false;
     };
     const validProjectiles=projectiles===undefined||(Array.isArray(projectiles)&&projectiles.length<=128&&projectiles.every(validProjectile));
