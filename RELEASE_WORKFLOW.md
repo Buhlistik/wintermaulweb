@@ -18,6 +18,8 @@ Release 1.14 makes browsers revalidate game files on visits. The Node host respo
 
 Release 1.15 removes redundant headings from the statistics and Compendium menus and centers the variant artwork. It does not change multiplayer state and remains compatible with releases 1.12 through 1.14 on protocol `/2`.
 
+Release 1.16 lowers menu and game music output and raises the procedural tower/enemy sound level while preserving the full SFX slider range. It does not change multiplayer state and remains compatible with releases 1.12 through 1.15 on protocol `/2`.
+
 ## Build and check
 
 From the complete Wintermaul source folder:
