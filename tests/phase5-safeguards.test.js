@@ -22,7 +22,7 @@ function waitForServer(child){
         child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Phase 5 server exited with code ${code}.`));});
     });
 }
-function connect(baseUrl,session,version='0.92.0'){
+function connect(baseUrl,session,version='0.93.0'){
     return new Promise((resolve,reject)=>{
         const url=new URL(baseUrl);url.searchParams.set('session',session);url.searchParams.set('version',version);
         const ws=new WebSocket(url),messages=[],waiters=[];
@@ -68,11 +68,11 @@ function connect(baseUrl,session,version='0.92.0'){
     try{
         const siteUrl=new URL(baseUrl);siteUrl.protocol=siteUrl.protocol==='wss:'?'https:':'http:';siteUrl.pathname='/';siteUrl.search='';
         const healthResponse=await fetch(new URL('/health',siteUrl));
-        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.92.0',rooms:0,players:0});
+        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.93.0',rooms:0,players:0});
 
         const outdated=await connect(baseUrl,'phase5-old-client-000001','0.79.0');
         const mismatch=await outdated.waitFor(message=>message.type==='incompatible_version');
-        assert.equal(mismatch.requiredVersion,'0.92.0');await outdated.close();
+        assert.equal(mismatch.requiredVersion,'0.93.0');await outdated.close();
 
         const hostSession='phase5-host-session-000001';
         const guestSession='phase5-guest-session-00001';
@@ -81,7 +81,7 @@ function connect(baseUrl,session,version='0.92.0'){
             host.waitFor(message=>message.type==='welcome'),guest.waitFor(message=>message.type==='welcome')
         ]);
         assert.equal(hostWelcome.clientId,hostSession);assert.equal(guestWelcome.clientId,guestSession);
-        assert.equal(hostWelcome.protocolVersion,'0.92.0');
+        assert.equal(hostWelcome.protocolVersion,'0.93.0');
         host.send('latency_ping',{clientTime:123});
         const pong=await host.waitFor(message=>message.type==='latency_pong');assert.equal(pong.clientTime,123);assert.ok(pong.serverTime>0);
 
@@ -129,6 +129,15 @@ function connect(baseUrl,session,version='0.92.0'){
         host.send('game_state',{state:{...state,nextProjectileId:4,projectileEvents:[orcArrow]}});
         const splitOrcShot=await guest.waitFor(message=>message.type==='game_state'&&message.revision===3);
         assert.deepEqual(splitOrcShot.state.projectileEvents,[orcArrow]);
+        const specialEffects=[
+            {id:4,kind:'lightning',fromX:160,fromY:40,toX:160,toY:200,role:'sky-thunder',at:18.5},
+            {id:5,kind:'beam',fromX:140,fromY:80,toX:250,toY:110,role:'ice-beam',at:18.5},
+            {id:6,kind:'mist',fromX:180,fromY:130,toX:180,toY:130,role:'purple-mist',at:18.5},
+            {id:7,kind:'breath',fromX:100,fromY:120,toX:400,toY:120,spread:220,role:'dragon-frost',at:18.5}
+        ];
+        host.send('game_state',{state:{...state,nextProjectileId:8,projectileEvents:specialEffects}});
+        const splitSpecialEffects=await guest.waitFor(message=>message.type==='game_state'&&message.revision===4);
+        assert.deepEqual(splitSpecialEffects.state.projectileEvents,specialEffects);
         host.send('game_state',{state:{...state,projectileEvents:[{...projectile,role:'script'}]}});
         await host.waitFor(message=>message.type==='error'&&message.code==='invalid_game_state');
 
@@ -151,11 +160,20 @@ function connect(baseUrl,session,version='0.92.0'){
         host.send('game_command',{command:{action:'upgrade_tower',towerId:3,path:1}});
         const paidHumanUpgrade=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='upgrade_tower');
         assert.equal(paidHumanUpgrade.command.path,1);
+        const orcTowerState={...state,towers:[{id:4,typeId:'orc-spiked-bunker',baseTypeId:'orc-spiked-bunker',x:20,y:20,ownerId:hostSession}],playerGold:{[hostSession]:89,[guestSession]:825}};
+        host.send('game_state',{state:orcTowerState});
+        host.send('game_command',{command:{action:'upgrade_tower',towerId:4,path:1}});
+        await host.waitFor(message=>message.type==='error'&&message.code==='not_enough_gold');
+        host.send('game_state',{state:{...orcTowerState,playerGold:{[hostSession]:90,[guestSession]:825}}});
+        host.send('game_command',{command:{action:'upgrade_tower',towerId:4,path:1}});
+        const paidOrcUpgrade=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='upgrade_tower');
+        assert.equal(paidOrcUpgrade.command.path,1,'server should charge the configured Orc variant price');
         guest.send('game_command',{command:{action:'place_tower',typeId:'orc-watchtower',x:15,y:15}});
         await guest.waitFor(message=>message.type==='error'&&message.code==='wrong_race_tower');
         guest.send('game_command',{command:{action:'place_tower',typeId:'undead-blighted-altar',x:15,y:15}});
         const undeadPlacement=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='place_tower');
         assert.equal(undeadPlacement.command.typeId,'undead-blighted-altar');assert.equal(undeadPlacement.command.actorRace,'undead');
+        host.send('game_state',{state:{...state,towers:[{id:1,typeId:'undead-blighted-altar',baseTypeId:'undead-blighted-altar',x:15,y:15,ownerId:guestSession}],playerGold:{[hostSession]:900,[guestSession]:825}}});
         guest.send('game_command',{command:{action:'upgrade_tower',towerId:1,path:1}});
         const freeUpgrade=await host.waitFor(message=>message.type==='game_command'&&message.command?.action==='upgrade_tower');
         assert.equal(freeUpgrade.command.path,1);
