@@ -3,7 +3,7 @@
 
     const MAX_PLAYERS=9;
     const CONNECT_TIMEOUT_MS=6000;
-    const PROTOCOL_VERSION='0.88.0';
+    const PROTOCOL_VERSION='0.89.0';
     const MAX_CHAT_LENGTH=200;
     const SESSION_KEY='wintermaul:multiplayer-session';
     const sessionToken=(()=>{

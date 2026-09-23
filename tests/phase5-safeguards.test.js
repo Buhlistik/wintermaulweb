@@ -22,7 +22,7 @@ function waitForServer(child){
         child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Phase 5 server exited with code ${code}.`));});
     });
 }
-function connect(baseUrl,session,version='0.88.0'){
+function connect(baseUrl,session,version='0.89.0'){
     return new Promise((resolve,reject)=>{
         const url=new URL(baseUrl);url.searchParams.set('session',session);url.searchParams.set('version',version);
         const ws=new WebSocket(url),messages=[],waiters=[];
@@ -68,11 +68,11 @@ function connect(baseUrl,session,version='0.88.0'){
     try{
         const siteUrl=new URL(baseUrl);siteUrl.protocol=siteUrl.protocol==='wss:'?'https:':'http:';siteUrl.pathname='/';siteUrl.search='';
         const healthResponse=await fetch(new URL('/health',siteUrl));
-        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.88.0',rooms:0,players:0});
+        assert.deepEqual(await healthResponse.json(),{ok:true,protocolVersion:'0.89.0',rooms:0,players:0});
 
         const outdated=await connect(baseUrl,'phase5-old-client-000001','0.79.0');
         const mismatch=await outdated.waitFor(message=>message.type==='incompatible_version');
-        assert.equal(mismatch.requiredVersion,'0.88.0');await outdated.close();
+        assert.equal(mismatch.requiredVersion,'0.89.0');await outdated.close();
 
         const hostSession='phase5-host-session-000001';
         const guestSession='phase5-guest-session-00001';
@@ -81,7 +81,7 @@ function connect(baseUrl,session,version='0.88.0'){
             host.waitFor(message=>message.type==='welcome'),guest.waitFor(message=>message.type==='welcome')
         ]);
         assert.equal(hostWelcome.clientId,hostSession);assert.equal(guestWelcome.clientId,guestSession);
-        assert.equal(hostWelcome.protocolVersion,'0.88.0');
+        assert.equal(hostWelcome.protocolVersion,'0.89.0');
         host.send('latency_ping',{clientTime:123});
         const pong=await host.waitFor(message=>message.type==='latency_pong');assert.equal(pong.clientTime,123);assert.ok(pong.serverTime>0);
 
@@ -112,11 +112,15 @@ function connect(baseUrl,session,version='0.88.0'){
         guest.send('game_ready');host.send('game_ready');
         await guest.waitFor(message=>message.type==='room_state'&&message.room.status==='playing');
 
-        const state={gold:900,playerGold:{[hostSession]:900,[guestSession]:825},lives:24,currentWave:3,maxWaves:25,waveActive:true,gameOver:false,speedMultiplier:1,elapsed:18.5,nextTowerId:4,nextEnemyId:3,nextMagmaId:1,outcome:null,towers:[{id:1,typeId:'alliance-arrow-tower',x:12,y:18,ownerId:guestSession},{id:3,typeId:'alliance-arrow-tower',x:22,y:18,ownerId:hostSession}],enemies:[{id:2,typeId:'enemy-grunt',x:11,y:9,hp:75,maxHp:100}],magmaPools:[]};
+        const projectile={id:1,fromX:100,fromY:120,toX:260,toY:180,role:'arrow',at:18.48};
+        const state={gold:900,playerGold:{[hostSession]:900,[guestSession]:825},lives:24,currentWave:3,maxWaves:25,waveActive:true,gameOver:false,speedMultiplier:1,elapsed:18.5,nextTowerId:4,nextEnemyId:3,nextMagmaId:1,nextProjectileId:2,projectileEvents:[projectile],outcome:null,towers:[{id:1,typeId:'alliance-arrow-tower',x:12,y:18,ownerId:guestSession},{id:3,typeId:'alliance-arrow-tower',x:22,y:18,ownerId:hostSession}],enemies:[{id:2,typeId:'enemy-grunt',x:11,y:9,hp:75,maxHp:100}],magmaPools:[]};
         const checkpoint={...state,enemies:[{...state.enemies[0],path:[[10,9],[11,9],[12,9]],pathIndex:1,slowEffects:{}}],spawnQueue:[[]],spawnTimer:.2,spawnInterval:.28};
         host.send('game_state',{state});host.send('game_checkpoint',{checkpoint});
         const splitGold=await guest.waitFor(message=>message.type==='game_state'&&message.revision===1);
         assert.equal(splitGold.state.playerGold[hostSession],900);assert.equal(splitGold.state.playerGold[guestSession],825);
+        assert.deepEqual(splitGold.state.projectileEvents,[projectile]);
+        host.send('game_state',{state:{...state,projectileEvents:[{...projectile,role:'script'}]}});
+        await host.waitFor(message=>message.type==='error'&&message.code==='invalid_game_state');
 
         host.send('game_command',{command:{action:'sell_tower',towerId:1}});
         await host.waitFor(message=>message.type==='error'&&message.code==='not_tower_owner');

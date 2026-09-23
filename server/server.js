@@ -10,7 +10,7 @@ const PORT=Number(process.env.PORT)||3000;
 const HOST=process.env.HOST||'0.0.0.0';
 const SITE_ROOT=path.resolve(__dirname,'..');
 const HOME_FILE='index.html';
-const PROTOCOL_VERSION='0.88.0';
+const PROTOCOL_VERSION='0.89.0';
 const MAX_PLAYERS=9;
 const MAX_MESSAGES=60;
 const MAX_CHAT_LENGTH=200;
@@ -274,7 +274,9 @@ function gameState(client,payload){
     const playerIds=new Set(room.players.map(player=>player.id)),ledger=state?.playerGold;
     const validLedger=ledger&&typeof ledger==='object'&&!Array.isArray(ledger)&&Object.keys(ledger).length===playerIds.size&&Object.entries(ledger).every(([playerId,gold])=>playerIds.has(playerId)&&Number.isInteger(gold)&&gold>=0&&gold<=1000000000);
     const validOwners=Array.isArray(state?.towers)&&state.towers.every(tower=>!tower.ownerId||playerIds.has(tower.ownerId));
-    if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners)return fail(client,'invalid_game_state','The game snapshot is invalid.');
+    const projectiles=state?.projectileEvents;
+    const validProjectiles=projectiles===undefined||(Array.isArray(projectiles)&&projectiles.length<=128&&projectiles.every(projectile=>projectile&&Number.isSafeInteger(projectile.id)&&projectile.id>0&&['arrow','crystal','cannon','fire','aura'].includes(projectile.role)&&[projectile.fromX,projectile.fromY,projectile.toX,projectile.toY].every(value=>Number.isFinite(value)&&value>=0&&value<=4096)&&Number.isFinite(projectile.at)&&projectile.at>=0));
+    if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners||!validProjectiles)return fail(client,'invalid_game_state','The game snapshot is invalid.');
     room.lastGameState=state;room.gameRevision+=1;
     touchRoom(room);
     for(const player of room.players){
