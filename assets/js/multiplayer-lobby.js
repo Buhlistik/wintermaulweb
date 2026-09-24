@@ -124,7 +124,11 @@
     function getClientId(){return clientId;}
     function getPlayers(){return room?.players?[...room.players]:[];}
     function getSelectedMap(){return room?.map||null;}
-    function selectMap(map){return isHost()&&room?.status==='lobby'&&send('set_map',{map});}
+    function selectMap(map){
+        if(!isHost()||room?.status!=='lobby')return false;
+        if(new Blob([JSON.stringify(map)]).size>850000){showToast('This map is too large to share. Use a smaller background or fewer painted cells.');return false;}
+        return send('set_map',{map});
+    }
     function localPlayer(){return room?.players?.find(player=>player.id===clientId)||null;}
     function updateProfile(changes){if(isActive())send('update_profile',{name:changes.name,race:changes.race,color:changes.color});}
     function toggleReady(){if(isActive())send('toggle_ready');}
