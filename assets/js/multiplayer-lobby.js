@@ -123,6 +123,8 @@
     function isGameActive(){return Boolean(isActive()&&launchedMatch);}
     function getClientId(){return clientId;}
     function getPlayers(){return room?.players?[...room.players]:[];}
+    function getSelectedMap(){return room?.map||null;}
+    function selectMap(map){return isHost()&&room?.status==='lobby'&&send('set_map',{map});}
     function localPlayer(){return room?.players?.find(player=>player.id===clientId)||null;}
     function updateProfile(changes){if(isActive())send('update_profile',{name:changes.name,race:changes.race,color:changes.color});}
     function toggleReady(){if(isActive())send('toggle_ready');}
@@ -337,6 +339,7 @@
         if(room.status==='starting'){startButton.disabled=true;startButton.textContent='Starting...';}
         else if(me?.isHost){startButton.disabled=!allReady;startButton.textContent=allReady?'Start Match':'Waiting for Ready';}
         else{startButton.disabled=true;startButton.textContent='Waiting for Host';}
+        window.renderSelectedMapLobby?.(room.map,Boolean(me?.isHost));
         renderChat();attachMenuSounds();
     }
     function init(){
@@ -347,6 +350,6 @@
         ensureConnected().catch(()=>scheduleReconnect());
     }
 
-    window.MultiplayerLobby={hostRoom,joinRoom,leaveRoom,isActive,isHost,isGameActive,getClientId,getPlayers,prepareMenu,renderLobby,updateProfile,toggleReady,sendChat,requestMatchStart,requestGameCommand,publishGameState,gameReady,gameEnded,reportMatchEnd};
+    window.MultiplayerLobby={hostRoom,joinRoom,leaveRoom,isActive,isHost,isGameActive,getClientId,getPlayers,getSelectedMap,selectMap,prepareMenu,renderLobby,updateProfile,toggleReady,sendChat,requestMatchStart,requestGameCommand,publishGameState,gameReady,gameEnded,reportMatchEnd};
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
