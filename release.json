@@ -1,5 +1,5 @@
 {
-  "releaseVersion": "1.22",
+  "releaseVersion": "1.23",
   "multiplayer": {
     "protocolId": "wintermaul-mp/2",
     "compatibleLegacyReleaseVersions": [
@@ -12,7 +12,8 @@
       "1.18",
       "1.19",
       "1.20",
-      "1.21"
+      "1.21",
+      "1.22"
     ]
   }
 }
