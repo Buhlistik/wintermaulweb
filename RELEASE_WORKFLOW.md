@@ -46,3 +46,5 @@ npm run release:mark-uploaded -- --webroot /path/to/current/webroot
 Do not change the protocol ID for a compatible game release. A breaking network change gets a new protocol ID; clients with a different ID are rejected and receive both release and protocol diagnostics.
 
 Release 1.20 highlights each occupied lobby slot with the color palette for that player's selected race. It changes only lobby presentation and remains compatible with releases 1.12 through 1.19 on protocol `/2`.
+
+Release 1.21 changes the Compendium's `Interval` stat label to `Attack Speed` to match the in-game tower UI. It does not change multiplayer state and remains compatible with releases 1.12 through 1.20 on protocol `/2`.
