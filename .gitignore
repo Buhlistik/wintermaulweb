@@ -4,3 +4,4 @@ npm-debug.log*
 release-output/
 .release/
 RELEASE_WORKFLOW.md
+scripts/release.js
