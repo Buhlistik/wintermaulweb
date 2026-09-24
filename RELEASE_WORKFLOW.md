@@ -48,3 +48,5 @@ Do not change the protocol ID for a compatible game release. A breaking network 
 Release 1.20 highlights each occupied lobby slot with the color palette for that player's selected race. It changes only lobby presentation and remains compatible with releases 1.12 through 1.19 on protocol `/2`.
 
 Release 1.21 changes the Compendium's `Interval` stat label to `Attack Speed` to match the in-game tower UI. It does not change multiplayer state and remains compatible with releases 1.12 through 1.20 on protocol `/2`.
+
+Release 1.22 adds a custom armor matchup panel above the in-game Armor panel while it is hovered. It lists the attack types and bonus damage against each armor type, and hides when the pointer leaves the Armor panel. It does not change multiplayer state and remains compatible with releases 1.12 through 1.21 on protocol `/2`.
