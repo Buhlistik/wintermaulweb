@@ -96,7 +96,7 @@ function systemMessage(text){return {id:id(),kind:'system',text,at:Date.now()};}
 function publicRoom(room){
     return {
         code:room.code,status:room.status,hostId:room.hostId,createdAt:room.createdAt,startedAt:room.startedAt||null,reconnectDeadline:room.reconnectDeadline||null,
-        players:room.players.map(player=>({...player,isHost:player.id===room.hostId})),messages:room.messages
+        players:room.players.map(player=>({...player,isHost:player.id===room.hostId})),messages:room.messages,map:room.map
     };
 }
 function send(client,type,payload={}){
@@ -183,7 +183,7 @@ function resumeSession(client){
 function createRoom(client,payload){
     removeFromRoom(client);
     const code=roomCode();
-    const room={code,status:'lobby',hostId:client.id,createdAt:Date.now(),updatedAt:Date.now(),startedAt:null,players:[],messages:[],gameRevision:0,lastGameState:null,lastCheckpoint:null,commandSequence:0,resumeStatus:null,reconnectDeadline:null};
+    const room={code,status:'lobby',map:{id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg'},hostId:client.id,createdAt:Date.now(),updatedAt:Date.now(),startedAt:null,players:[],messages:[],gameRevision:0,lastGameState:null,lastCheckpoint:null,commandSequence:0,resumeStatus:null,reconnectDeadline:null};
     const host=playerFor(client,payload,room);host.ready=true;room.players.push(host);
     addMessage(room,systemMessage(`${host.name} created room ${code}.`));
     rooms.set(code,room);client.roomCode=code;broadcastState(room);
@@ -209,6 +209,31 @@ function updateProfile(client,payload){
         if(room.players.some(item=>item.id!==client.id&&item.color===payload.color))return fail(client,'color_taken','That player color is already in use.');
         player.color=payload.color;player.ready=player.id===room.hostId;
     }
+    broadcastState(room);
+}
+function sanitizeMap(value){
+    if(!value||typeof value!=='object')return null;
+    if(value.id==='wintermaul')return {id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg'};
+    if(typeof value.id!=='string'||!/^[-a-zA-Z0-9]{8,64}$/.test(value.id))return null;
+    const name=cleanText(value.name,48);
+    if(!name||!value.level||value.level.mapSize?.columns!==100||value.level.mapSize?.rows!==100)return null;
+    const validCells=(cells,max)=>Array.isArray(cells)&&cells.length<=max&&cells.every(cell=>cell&&Number.isInteger(cell.x)&&Number.isInteger(cell.y)&&cell.x>=0&&cell.x<100&&cell.y>=0&&cell.y<100);
+    const level=value.level;
+    if(!validCells(level.spawns,10000)||!level.spawns.length||!validCells(level.exits,10000)||!level.exits.length||!validCells(level.walls,10000)||!validCells(level.buildZones||[],10000))return null;
+    if((level.buildZones||[]).some(cell=>!COLORS.includes(cell.color)))return null;
+    const background=value.background;
+    if(background!=='./assets/images/mapbackground.jpg'&&(typeof background!=='string'||background.length>550000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(background)))return null;
+    return {id:value.id,name,background,level:{mapSize:{columns:100,rows:100},spawns:level.spawns,exits:level.exits,walls:level.walls,buildZones:level.buildZones||[]}};
+}
+function setMap(client,payload){
+    const room=currentRoom(client);if(!room)return fail(client,'not_in_room','Join a room first.');
+    if(room.hostId!==client.id)return fail(client,'host_only','Only the host can change the map.');
+    if(room.status!=='lobby')return fail(client,'match_started','The match has already started.');
+    const map=sanitizeMap(payload.map);
+    if(!map)return fail(client,'invalid_map','The selected map is invalid or its background is too large.');
+    room.map=map;
+    room.players.forEach(player=>{player.ready=player.id===room.hostId;});
+    addMessage(room,systemMessage('The host selected '+map.name+'.'));
     broadcastState(room);
 }
 function toggleReady(client){
@@ -273,6 +298,7 @@ function gameCommand(client,payload){
     const command=sanitizeGameCommand(payload.command);if(!command)return fail(client,'invalid_game_command','That game action is invalid.');
     if(command.action==='start_wave'&&client.id!==room.hostId)return fail(client,'host_only','Only the host controls waves.');
     if(command.action==='place_tower'&&TOWER_RACES.get(command.typeId)!==player.race)return fail(client,'wrong_race_tower','That tower is not available to your selected race.');
+    if(command.action==='place_tower'&&room.map.level?.buildZones?.some(zone=>zone.x===command.x&&zone.y===command.y&&zone.color!==player.color))return fail(client,'reserved_build_area','This build area belongs to another player color.');
     if((command.action==='upgrade_tower'||command.action==='sell_tower')&&room.lastGameState){
         const tower=room.lastGameState.towers.find(item=>item.id===command.towerId);
         if(!tower)return fail(client,'tower_missing','That tower no longer exists.');
@@ -363,6 +389,7 @@ function handleClientMessage(client,raw){
         case 'join_room':joinRoom(client,payload);break;
         case 'update_profile':updateProfile(client,payload);break;
         case 'toggle_ready':toggleReady(client);break;
+        case 'set_map':setMap(client,payload);break;
         case 'chat':chat(client,payload);break;
         case 'start_match':startMatch(client);break;
         case 'game_ready':gameReady(client);break;
