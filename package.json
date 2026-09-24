@@ -6,11 +6,7 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node server/server.js",
-    "release:check": "node scripts/release.js check",
-    "release:package": "node scripts/release.js package",
-    "release:baseline": "node scripts/release.js baseline",
-    "release:mark-uploaded": "node scripts/release.js mark-uploaded"
+    "dev": "node server/server.js"
   },
   "engines": {
     "node": ">=20"
