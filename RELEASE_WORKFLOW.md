@@ -52,3 +52,5 @@ Release 1.21 changes the Compendium's `Interval` stat label to `Attack Speed` to
 Release 1.22 adds a custom armor matchup panel above the in-game Armor panel while it is hovered. It lists the attack types and bonus damage against each armor type, and hides when the pointer leaves the Armor panel. It does not change multiplayer state and remains compatible with releases 1.12 through 1.21 on protocol `/2`.
 
 Release 1.23 improves readability of the in-game armor matchup panel with larger text, stronger contrast, and clearer table separation. It does not change multiplayer state and remains compatible with releases 1.12 through 1.22 on protocol `/2`.
+
+Release 1.24 moves armor matchup details into the existing bottom-middle selection panel while the bottom-left Armor stat is hovered. It temporarily overrides selected tower or enemy details and restores them when the pointer leaves Armor. The panel keeps its existing dimensions, and the old Armor hover panel is removed. This display-only change remains compatible with releases 1.12 through 1.23 on protocol `/2`.
