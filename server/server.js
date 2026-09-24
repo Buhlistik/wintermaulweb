@@ -27,7 +27,8 @@ const RACES=new Set(['human','orc','undead','nightelf','naga']);
 const CUSTOM_TOWERS=Object.freeze({
     orc:['orc-watchtower','orc-spiked-bunker','orc-war-forge','orc-war-hut','orc-fel-well','orc-dragon-pit'],
     undead:['undead-blighted-altar','undead-ember-spire','undead-frost-spire','undead-bone-cage','undead-soul-prism','undead-bonefire-tower'],
-    nightelf:['nightelf-ancient-protector','nightelf-moonwell','nightelf-lunar-sentinel','nightelf-runestone','nightelf-flame-warden','nightelf-ancient-of-lore']
+    nightelf:['nightelf-ancient-protector','nightelf-moonwell','nightelf-lunar-sentinel','nightelf-runestone','nightelf-flame-warden','nightelf-ancient-of-lore'],
+    naga:['naga-coral-bed','naga-tidal-guardian','naga-altar-of-depths','naga-spawning-grounds','naga-shrine-of-azshara','naga-temple-of-tides']
 });
 const HUMAN_TOWERS=['alliance-arrow-tower','crystal-sentinel','merchant-house','command-banner','dwarven-cannon','grand-fire-spire'];
 const TOWER_RACES=new Map([
@@ -58,7 +59,8 @@ const NIGHTELF_UPGRADE_COSTS=new Map([
 const ORC_TOWER_COSTS=new Map([['orc-spiked-bunker',25],['orc-watchtower',100],['orc-war-forge',150],['orc-war-hut',175],['orc-fel-well',300],['orc-dragon-pit',500]]);
 const UNDEAD_TOWER_COSTS=new Map([['undead-ember-spire',80],['undead-frost-spire',120],['undead-bone-cage',190],['undead-blighted-altar',320],['undead-bonefire-tower',440],['undead-soul-prism',600]]);
 const NIGHTELF_TOWER_COSTS=new Map([['nightelf-moonwell',80],['nightelf-ancient-protector',130],['nightelf-flame-warden',210],['nightelf-lunar-sentinel',325],['nightelf-runestone',460],['nightelf-ancient-of-lore',650]]);
-const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)??ORC_TOWER_COSTS.get(typeId)??UNDEAD_TOWER_COSTS.get(typeId)??NIGHTELF_TOWER_COSTS.get(typeId)??0]));
+const NAGA_TOWER_COSTS=new Map([['naga-coral-bed',75],['naga-tidal-guardian',100],['naga-altar-of-depths',150],['naga-spawning-grounds',175],['naga-shrine-of-azshara',250],['naga-temple-of-tides',400]]);
+const TOWER_COSTS=new Map([...TOWER_IDS].map(typeId=>[typeId,HUMAN_TOWER_COSTS.get(typeId)??ORC_TOWER_COSTS.get(typeId)??UNDEAD_TOWER_COSTS.get(typeId)??NIGHTELF_TOWER_COSTS.get(typeId)??NAGA_TOWER_COSTS.get(typeId)??0]));
 const UPGRADE_COSTS=new Map([...TOWER_IDS].map(typeId=>[
     typeId,new Map((HUMAN_UPGRADE_COSTS.get(typeId)||ORC_UPGRADE_COSTS.get(typeId)||UNDEAD_UPGRADE_COSTS.get(typeId)||NIGHTELF_UPGRADE_COSTS.get(typeId)||[0,0]).map((cost,index)=>[index+1,cost]))
 ]));
