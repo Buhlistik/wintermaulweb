@@ -214,7 +214,7 @@ function updateProfile(client,payload){
 function sanitizeMap(value){
     if(!value||typeof value!=='object')return null;
     if(value.id==='wintermaul')return {id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg'};
-    const hostedMapId=typeof value.id==='string'?/^map-level-([0-9]{1,12})$/.exec(value.id):null;
+    const hostedMapId=typeof value.id==='string'?/^map-level-([0-9]+)$/.exec(value.id):null;
     if(hostedMapId){
         const number=hostedMapId[1],name=cleanText(value.name,48);
         const tdml='./assets/maps/map_level'+number+'.tdml';
