@@ -220,8 +220,10 @@ function sanitizeMap(value){
         const tdml='./assets/maps/map_level'+number+'.tdml';
         const scriptFile='./assets/maps/map_level'+number+'.js';
         const allowedBackgrounds=['png','jpg','jpeg','webp'].map(extension=>'./assets/images/mapbackground'+number+'.'+extension);
+        const buildZones=Array.isArray(value.buildZones)?value.buildZones:[];
         if(!name||value.tdml!==tdml||value.scriptFile!==scriptFile||!allowedBackgrounds.includes(value.background))return null;
-        return {id:value.id,name,hosted:true,tdml,scriptFile,background:value.background};
+        if(buildZones.length>10000||buildZones.some(zone=>!zone||!Number.isInteger(zone.x)||!Number.isInteger(zone.y)||zone.x<0||zone.x>99||zone.y<0||zone.y>99||!COLORS.includes(zone.color)))return null;
+        return {id:value.id,name,hosted:true,tdml,scriptFile,background:value.background,buildZones};
     }
     if(typeof value.id!=='string'||!/^[-a-zA-Z0-9]{8,64}$/.test(value.id))return null;
     const name=cleanText(value.name,48);
@@ -307,7 +309,8 @@ function gameCommand(client,payload){
     const command=sanitizeGameCommand(payload.command);if(!command)return fail(client,'invalid_game_command','That game action is invalid.');
     if(command.action==='start_wave'&&client.id!==room.hostId)return fail(client,'host_only','Only the host controls waves.');
     if(command.action==='place_tower'&&TOWER_RACES.get(command.typeId)!==player.race)return fail(client,'wrong_race_tower','That tower is not available to your selected race.');
-    if(command.action==='place_tower'&&room.map.level?.buildZones?.some(zone=>zone.x===command.x&&zone.y===command.y&&zone.color!==player.color))return fail(client,'reserved_build_area','This build area belongs to another player color.');
+    const reservedBuildZones=room.map.buildZones||room.map.level?.buildZones||[];
+    if(command.action==='place_tower'&&reservedBuildZones.some(zone=>zone.x===command.x&&zone.y===command.y&&zone.color!==player.color))return fail(client,'reserved_build_area','This build area belongs to another player color.');
     if((command.action==='upgrade_tower'||command.action==='sell_tower')&&room.lastGameState){
         const tower=room.lastGameState.towers.find(item=>item.id===command.towerId);
         if(!tower)return fail(client,'tower_missing','That tower no longer exists.');
