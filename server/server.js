@@ -183,7 +183,7 @@ function resumeSession(client){
 function createRoom(client,payload){
     removeFromRoom(client);
     const code=roomCode();
-    const room={code,status:'lobby',map:{id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg'},hostId:client.id,createdAt:Date.now(),updatedAt:Date.now(),startedAt:null,players:[],messages:[],gameRevision:0,lastGameState:null,lastCheckpoint:null,commandSequence:0,resumeStatus:null,reconnectDeadline:null};
+    const room={code,status:'lobby',map:{id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg',maxPlayers:9},hostId:client.id,createdAt:Date.now(),updatedAt:Date.now(),startedAt:null,players:[],messages:[],gameRevision:0,lastGameState:null,lastCheckpoint:null,commandSequence:0,resumeStatus:null,reconnectDeadline:null};
     const host=playerFor(client,payload,room);host.ready=true;room.players.push(host);
     addMessage(room,systemMessage(`${host.name} created room ${code}.`));
     rooms.set(code,room);client.roomCode=code;broadcastState(room);
@@ -193,7 +193,8 @@ function joinRoom(client,payload){
     if(code.length!==ROOM_CODE_LENGTH)return fail(client,'invalid_code','Enter a valid six-character room code.');
     if(!room)return fail(client,'room_not_found',`Room ${code} was not found.`);
     if(room.status!=='lobby')return fail(client,'match_started','That match has already started.');
-    if(room.players.length>=MAX_PLAYERS)return fail(client,'room_full','That room is full.');
+    const maxPlayers=room.map.maxPlayers||MAX_PLAYERS;
+    if(room.players.length>=maxPlayers)return fail(client,'room_full','That map allows up to '+maxPlayers+' players.');
     removeFromRoom(client);
     const player=playerFor(client,payload,room);room.players.push(player);client.roomCode=code;
     addMessage(room,systemMessage(`${player.name} joined the room.`));broadcastState(room);
@@ -213,7 +214,9 @@ function updateProfile(client,payload){
 }
 function sanitizeMap(value){
     if(!value||typeof value!=='object')return null;
-    if(value.id==='wintermaul')return {id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg'};
+    if(value.id==='wintermaul')return {id:'wintermaul',name:'Wintermaul',background:'./assets/images/mapbackground.jpg',maxPlayers:9};
+    const maxPlayers=value.maxPlayers===undefined?9:value.maxPlayers;
+    if(!Number.isInteger(maxPlayers)||maxPlayers<1||maxPlayers>MAX_PLAYERS)return null;
     const hostedMapId=typeof value.id==='string'?/^map-level-([0-9]+)$/.exec(value.id):null;
     if(hostedMapId){
         const number=hostedMapId[1],name=cleanText(value.name,48);
@@ -223,7 +226,7 @@ function sanitizeMap(value){
         const buildZones=Array.isArray(value.buildZones)?value.buildZones:[];
         if(!name||value.tdml!==tdml||value.scriptFile!==scriptFile||!allowedBackgrounds.includes(value.background))return null;
         if(buildZones.length>10000||buildZones.some(zone=>!zone||!Number.isInteger(zone.x)||!Number.isInteger(zone.y)||zone.x<0||zone.x>99||zone.y<0||zone.y>99||!COLORS.includes(zone.color)))return null;
-        return {id:value.id,name,hosted:true,tdml,scriptFile,background:value.background,buildZones};
+        return {id:value.id,name,hosted:true,tdml,scriptFile,background:value.background,maxPlayers,buildZones};
     }
     if(typeof value.id!=='string'||!/^[-a-zA-Z0-9]{8,64}$/.test(value.id))return null;
     const name=cleanText(value.name,48);
@@ -234,7 +237,7 @@ function sanitizeMap(value){
     if((level.buildZones||[]).some(cell=>!COLORS.includes(cell.color)))return null;
     const background=value.background;
     if(background!=='./assets/images/mapbackground.jpg'&&(typeof background!=='string'||background.length>550000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(background)))return null;
-    return {id:value.id,name,background,level:{mapSize:{columns:100,rows:100},spawns:level.spawns,exits:level.exits,walls:level.walls,buildZones:level.buildZones||[]}};
+    return {id:value.id,name,background,maxPlayers,level:{mapSize:{columns:100,rows:100},spawns:level.spawns,exits:level.exits,walls:level.walls,buildZones:level.buildZones||[]}};
 }
 function setMap(client,payload){
     const room=currentRoom(client);if(!room)return fail(client,'not_in_room','Join a room first.');
@@ -242,6 +245,7 @@ function setMap(client,payload){
     if(room.status!=='lobby')return fail(client,'match_started','The match has already started.');
     const map=sanitizeMap(payload.map);
     if(!map)return fail(client,'invalid_map','The selected map is invalid or its background is too large.');
+    if(room.players.length>map.maxPlayers)return fail(client,'map_player_limit','That map allows fewer players than are currently in the lobby. Remove players before selecting it.');
     room.map=map;
     room.players.forEach(player=>{player.ready=player.id===room.hostId;});
     addMessage(room,systemMessage('The host selected '+map.name+'.'));
