@@ -219,7 +219,11 @@ function sanitizeMap(value){
         const number=hostedMapId[1],name=cleanText(value.name,48);
         const tdml='./assets/maps/map_level'+number+'.tdml';
         const scriptFile='./assets/maps/map_level'+number+'.js';
-        const backgroundPattern=new RegExp('^\\.\\/assets\\/images\\/mapbackground'+number+'\\.(png|jpg|jpeg|webp)
+        const allowedBackgrounds=['png','jpg','jpeg','webp'].map(extension=>'./assets/images/mapbackground'+number+'.'+extension);
+        if(!name||value.tdml!==tdml||value.scriptFile!==scriptFile||!allowedBackgrounds.includes(value.background))return null;
+        return {id:value.id,name,hosted:true,tdml,scriptFile,background:value.background};
+    }
+    if(typeof value.id!=='string'||!/^[-a-zA-Z0-9]{8,64}$/.test(value.id))return null;
     const name=cleanText(value.name,48);
     if(!name||!value.level||value.level.mapSize?.columns!==100||value.level.mapSize?.rows!==100)return null;
     const validCells=(cells,max)=>Array.isArray(cells)&&cells.length<=max&&cells.every(cell=>cell&&Number.isInteger(cell.x)&&Number.isInteger(cell.y)&&cell.x>=0&&cell.x<100&&cell.y>=0&&cell.y<100);
