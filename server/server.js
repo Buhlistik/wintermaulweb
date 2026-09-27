@@ -307,6 +307,11 @@ function sanitizeGameCommand(value){
         if(!Number.isFinite(x)||!Number.isFinite(y)||Math.abs(x)>1||Math.abs(y)>1||Math.hypot(x,y)>1.05)return null;
         return {action,x,y};
     }
+    if(action==='hero_attack'){
+        const x=Number(value.x),y=Number(value.y);
+        if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>4096||y>4096)return null;
+        return {action,x,y};
+    }
     if(action==='start_wave')return {action};
     return null;
 }
@@ -317,7 +322,7 @@ function gameCommand(client,payload){
     if(client.commandCount>48)return fail(client,'command_rate_limited','Too many game actions were submitted at once.');
     const command=sanitizeGameCommand(payload.command);if(!command)return fail(client,'invalid_game_command','That game action is invalid.');
     if(command.action==='start_wave'&&client.id!==room.hostId)return fail(client,'host_only','Only the host controls waves.');
-    if(command.action==='hero_input'&&!room.lastGameState?.heroes?.some(hero=>hero.playerId===client.id))return fail(client,'hero_unavailable','Your hero is not active in this match.');
+    if(['hero_input','hero_attack'].includes(command.action)&&!room.lastGameState?.heroes?.some(hero=>hero.playerId===client.id))return fail(client,'hero_unavailable','Your hero is not active in this match.');
     if(command.action==='place_tower'&&TOWER_RACES.get(command.typeId)!==player.race)return fail(client,'wrong_race_tower','That tower is not available to your selected race.');
     const reservedBuildZones=room.map.buildZones||room.map.level?.buildZones||[];
     if(command.action==='place_tower'&&reservedBuildZones.some(zone=>zone.x===command.x&&zone.y===command.y&&zone.color!==player.color))return fail(client,'reserved_build_area','This build area belongs to another player color.');
@@ -359,6 +364,8 @@ function gameState(client,payload){
     const validLedger=ledger&&typeof ledger==='object'&&!Array.isArray(ledger)&&Object.keys(ledger).length===playerIds.size&&Object.entries(ledger).every(([playerId,gold])=>playerIds.has(playerId)&&Number.isInteger(gold)&&gold>=0&&gold<=1000000000);
     const validOwners=Array.isArray(state?.towers)&&state.towers.every(tower=>!tower.ownerId||playerIds.has(tower.ownerId));
     const validHeroes=validHeroRoster(state?.heroes,room.players);
+    const validHeroProjectiles=items=>items===undefined||(Array.isArray(items)&&items.length<=128&&items.every(item=>item&&Number.isSafeInteger(item.id)&&item.id>0&&playerIds.has(item.ownerId)&&RACES.has(item.race)&&room.players.some(player=>player.id===item.ownerId&&player.race===item.race)&&['x','y','dx','dy','travelled','range','speed','damage'].every(key=>Number.isFinite(item[key]))&&item.x>=0&&item.x<=4096&&item.y>=0&&item.y<=4096&&Math.hypot(item.dx,item.dy)>=.9&&Math.hypot(item.dx,item.dy)<=1.1&&item.travelled>=0&&item.range>0&&item.range<=4096&&item.travelled<=item.range&&item.speed>0&&item.speed<=2000&&item.damage>=0&&item.damage<=1000000));
+    const validHeroShots=validHeroProjectiles(state?.heroProjectiles);
     const projectiles=state?.projectileEvents;
     const attackModes=new Set(['projectile','meteor','sky-strike','beam-strike','radial','wave','tidal-wave','ring','boomerang','breath','naga-chain','naga-lance','naga-brood']);
     const attackRoles=new Set(['arrow','orc-arrow','longbow','eagle','crystal','frost','arcane','cannon','thunder','siege','fire','magma','phoenix','aura','command','fel','shaman-orb','ethereal-red','ethereal-purple','ethereal-ice','bone-spike','bone-spike-large','bone-spike-venom','ancient-rock','ancient-fire-rock','ancient-blue','bonefire-fire','poison-vial','blight-meteor','blight-lightning','sky-thunder','water-wave','soul-ring-blue','soul-ring-purple','moon-boomerang','nature-boomerang','dragon','dragon-frost','moonbeam','nature-beam','rock','ice-beam','naga-coral','naga-reef','naga-bloom','naga-guardian','naga-depth-orb','naga-chain','naga-lance','naga-storm','naga-whirlpool','naga-pearl','naga-pearl-fan','naga-brood-pod','naga-broodling','naga-scepter','naga-queen','naga-abyss','naga-tide','naga-maelstrom']);
@@ -379,7 +386,7 @@ function gameState(client,payload){
     const validAttackState=validAttackProjectiles(state?.attackProjectiles);
     const earthquakeFields=state?.earthquakeFields;
     const validEarthquakeFields=earthquakeFields===undefined||(Array.isArray(earthquakeFields)&&earthquakeFields.length<=1024&&earthquakeFields.every(field=>field&&Number.isSafeInteger(field.id)&&field.id>0&&Number.isFinite(field.x)&&field.x>=0&&field.x<=4096&&Number.isFinite(field.y)&&field.y>=0&&field.y<=4096&&Number.isFinite(field.radius)&&field.radius>0&&field.radius<=4096&&Number.isFinite(field.dps)&&field.dps>=0&&field.dps<=100000&&Number.isFinite(field.expiresAt)&&field.expiresAt>=0&&['normal','piercing','magic','siege','elemental','support','economic'].includes(field.attackType||'siege')&&(!field.ownerId||playerIds.has(field.ownerId))));
-    if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners||!validHeroes||!validProjectiles||!validAttackState||!validEarthquakeFields)return fail(client,'invalid_game_state','The game snapshot is invalid.');
+    if(!state||typeof state!=='object'||!Array.isArray(state.towers)||!Array.isArray(state.enemies)||state.towers.length>1000||state.enemies.length>2000||!validLedger||!validOwners||!validHeroes||!validHeroShots||!validProjectiles||!validAttackState||!validEarthquakeFields)return fail(client,'invalid_game_state','The game snapshot is invalid.');
     room.lastGameState=state;room.gameRevision+=1;
     touchRoom(room);
     for(const player of room.players){
@@ -394,11 +401,13 @@ function gameCheckpoint(client,payload){
     const playerIds=new Set(room.players.map(player=>player.id)),ledger=checkpoint?.playerGold;
     const validLedger=ledger&&typeof ledger==='object'&&!Array.isArray(ledger)&&Object.keys(ledger).length===playerIds.size&&Object.entries(ledger).every(([playerId,gold])=>playerIds.has(playerId)&&Number.isInteger(gold)&&gold>=0&&gold<=1000000000);
     const validHeroes=validHeroRoster(checkpoint?.heroes,room.players);
+    const validHeroProjectiles=items=>items===undefined||(Array.isArray(items)&&items.length<=128&&items.every(item=>item&&Number.isSafeInteger(item.id)&&item.id>0&&playerIds.has(item.ownerId)&&RACES.has(item.race)&&room.players.some(player=>player.id===item.ownerId&&player.race===item.race)&&['x','y','dx','dy','travelled','range','speed','damage'].every(key=>Number.isFinite(item[key]))&&item.x>=0&&item.x<=4096&&item.y>=0&&item.y<=4096&&Math.hypot(item.dx,item.dy)>=.9&&Math.hypot(item.dx,item.dy)<=1.1&&item.travelled>=0&&item.range>0&&item.range<=4096&&item.travelled<=item.range&&item.speed>0&&item.speed<=2000&&item.damage>=0&&item.damage<=1000000));
+    const validHeroShots=validHeroProjectiles(checkpoint?.heroProjectiles);
     const earthquakeFields=checkpoint?.earthquakeFields;
     const attackSimulation=checkpoint?.attackSimulation;
     const validAttackSimulation=attackSimulation===undefined||(Array.isArray(attackSimulation)&&attackSimulation.length<=128&&attackSimulation.every(projectile=>projectile&&Number.isSafeInteger(projectile.id)&&projectile.id>0&&Number.isFinite(projectile.x)&&projectile.x>=0&&projectile.x<=4096&&Number.isFinite(projectile.y)&&projectile.y>=0&&projectile.y<=4096&&Number.isFinite(projectile.age)&&projectile.age>=0&&Number.isFinite(projectile.lifetime)&&projectile.lifetime>0&&projectile.lifetime<=4&&Array.isArray(projectile.hitIds)&&projectile.hitIds.length<=200&&projectile.weapon&&typeof projectile.weapon==='object'&&!Array.isArray(projectile.weapon)));
     const validEarthquakeFields=earthquakeFields===undefined||(Array.isArray(earthquakeFields)&&earthquakeFields.length<=1024&&earthquakeFields.every(field=>field&&Number.isSafeInteger(field.id)&&field.id>0&&Number.isFinite(field.x)&&field.x>=0&&field.x<=4096&&Number.isFinite(field.y)&&field.y>=0&&field.y<=4096&&Number.isFinite(field.radius)&&field.radius>0&&field.radius<=4096&&Number.isFinite(field.dps)&&field.dps>=0&&field.dps<=100000&&Number.isFinite(field.expiresAt)&&field.expiresAt>=0&&['normal','piercing','magic','siege','elemental','support','economic'].includes(field.attackType||'siege')&&(!field.ownerId||playerIds.has(field.ownerId))));
-    if(!checkpoint||typeof checkpoint!=='object'||!Array.isArray(checkpoint.towers)||!Array.isArray(checkpoint.enemies)||!Array.isArray(checkpoint.spawnQueue)||checkpoint.towers.length>1000||checkpoint.enemies.length>2000||checkpoint.spawnQueue.length>200||!validLedger||!validHeroes||!validAttackSimulation||!validEarthquakeFields)return fail(client,'invalid_checkpoint','The recovery checkpoint is invalid.');
+    if(!checkpoint||typeof checkpoint!=='object'||!Array.isArray(checkpoint.towers)||!Array.isArray(checkpoint.enemies)||!Array.isArray(checkpoint.spawnQueue)||checkpoint.towers.length>1000||checkpoint.enemies.length>2000||checkpoint.spawnQueue.length>200||!validLedger||!validHeroes||!validHeroShots||!validAttackSimulation||!validEarthquakeFields)return fail(client,'invalid_checkpoint','The recovery checkpoint is invalid.');
     room.lastCheckpoint=checkpoint;
     touchRoom(room);
 }
